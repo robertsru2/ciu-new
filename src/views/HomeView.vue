@@ -1,7 +1,7 @@
 <template>
   <div class="home">
-    <img alt="Vue logo" src="../assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
+    <img alt="National Jewish Health" src="../assets/NJ_Logo.png">
+    <HelloWorld msg="Welcome to the Clinical Information Reports App"/>
   </div>
 </template>
 

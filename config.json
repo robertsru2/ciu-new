@@ -1,0 +1,25 @@
+{
+    "img_path": "./imgs",
+    "data_path": "./data",
+    "sql_file_path": "./sql",
+    "archive_pdf_path": "./archive",
+    "pdf_path":"c:/apd/py/ciu/pdfs",
+    "comp_csv_file": "Comp_Data_For_CIUs",
+    "cpt_csv_file": "CPT_Data_For_CIUs",
+    "comp_excel_file": "Comp_Data_For_CIUs",
+    "cpt_excel_file": "CPT_Data_For_CIUs",
+    "schedule_csv_file": "Schedule_Data_For_CIUs",
+    "schedule_excel_file": "Schedule_Data_For_CIUs",
+    "image_resolution"  : "100",
+    "image_format" : "png",
+    "provider_file":"providers.csv",    
+    "database_connection": {
+        "server": "njco-edwprod.njco.hosted",
+        "database": "Epic"
+    },
+    "RVUGraph_sql":"Get_RVU_All.sql",
+    "CPTGraph_sql":"Get_CPTS_By_Provider.sql",
+    "provider_sql":"Get_All_Providers.sql",
+    "Schedule_sql":"Get_Provider_Time.sql",
+    "start_date":"07/01/2023"
+}
