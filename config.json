@@ -1,9 +1,9 @@
 {
     "img_path": "./imgs",
-    "data_path": "./data",
-    "sql_file_path": "./sql",
-    "archive_pdf_path": "./archive",
-    "pdf_path":"c:/apd/py/ciu/pdfs",
+    "data_path": "C:/apd/py/fastapi/app/data",
+    "sql_file_path": "C:/apd/py/fastapi/app/sql",
+    "archive_pdf_path": "C:/apd/py/fastapi/app/archive",
+    "pdf_path":"c:/apd/py/fastapi/app/pdfs",
     "comp_csv_file": "Comp_Data_For_CIUs",
     "cpt_csv_file": "CPT_Data_For_CIUs",
     "comp_excel_file": "Comp_Data_For_CIUs",
@@ -23,3 +23,4 @@
     "Schedule_sql":"Get_Provider_Time.sql",
     "start_date":"07/01/2023"
 }
+

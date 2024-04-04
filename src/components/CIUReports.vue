@@ -10,32 +10,38 @@
       <input type="date" v-model="startDate" min="2023-07-01" class="date-input">
       <input type="date" v-model="endDate" min="2023-07-01" class="date-input">
       <b-button @click="createReports" variant="primary">Create Reports</b-button>
-      </div>
-        <div class="progress-container">
+      <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
+      <div class="progress-container">
         <p>{{ progress1.step }}</p>
         <progress :value="progress1.current" :max="progress1.total"></progress>
         <p>{{ progress1.current }} / {{ progress1.total }}</p>
       </div>
+ 
+    </div>
+    <div class="container">
       <div class="multiselect-container">
         <div class="form-check" v-for="file in files" :key="file.value">
           <input class="form-check-input" type="checkbox" :value="file.value" v-model="selectedFiles">
           <label class="form-check-label">{{ file.text }}</label>
         </div>
       </div>
-    <div class="progress-container">
+      <div class="progress-container2">
+        <p>Files Selected: {{ selectedFiles.length }}</p>
         <b-button @click="printReports" variant="primary">Print Reports</b-button>
-        <p>{{ progress2.step }}</p>
-        <progress :value="progress2.current" :max="progress2.total"></progress>
-        <p>{{ progress2.current }} / {{ progress2.total }}</p>
+        <div class="progress-bar-container">
+            <p>{{ progress2.step }}</p>
+            <progress :value="progress2.current" :max="progress2.total"></progress>
+            <p>{{ progress2.current }} / {{ progress2.total }}</p>
+        </div>
     </div>
+ </div>
 </div>
-  </template>
+</template>
   
   <script>
   import axios from 'axios'
   import config from '../../config'; // adjust the path according to your file structure
-  console.log(config.start_date)
-  
+   
   export default {
     data() {
       return {
@@ -44,12 +50,15 @@
         selectedFiles: [],
         logMessages: [],
         startDate: config.start_date,
-        progress1: { current: 0, total: 0, step: '' },
-        progress2: { current: 0, total: 0, step: '' }
+        endDate: '',
+        progress1: { current: 0, total: 0, step: 'Report Creation Progress Bar' },
+        progress2: { current: 0, total: 0, step: 'Report Printing Progress Bar' },
+        errorMessage: ''
       }
     },
     async created() {
-        this.loadFiles();
+      console.log(config.start_date)
+      this.loadFiles();
 
         try {
         console.log('Before axios.get')
@@ -72,10 +81,21 @@
         }
     },    
         methods: {
+          validateDates() {
+            if (this.startDate && this.endDate && this.startDate > this.endDate) {
+              this.errorMessage = 'End date must be later than start date.';
+            } else {
+              this.errorMessage = '';
+              this.createReports();
+            }
+          },
             async loadFiles() {
             try {
                 const response = await axios.get('http://localhost:8000/load_files');
                 const newFiles = response.data.map(file => ({ text: file, value: file }));
+                if (newFiles.length === 0) {
+                  newFiles.push({ text: 'No Files to Print', value: 'No Files to Print' });
+                }
                 if (JSON.stringify(newFiles) !== JSON.stringify(this.files)) {
                     this.files = newFiles;
                     this.selectedFiles = this.files.map(file => file.value);            
@@ -84,25 +104,12 @@
                 console.error(error);
             }
         },
-            
-        // async printReports() {
-        // try {
-        //     const response = await axios.post('http://localhost:8000/print_cius', {
-        //     selectedFiles: this.selectedFiles
-        //     })
-        //     console.log('Response:', response.data)
-        //     // Handle the response
-        // } catch (error) {
-        //     console.error('Error:', error)
-        //     // Handle the error
-        // }
-        // },
         createReports() {
             if (this.socket) {
                 this.socket.close();
             }
 
-            this.socket = new WebSocket('ws://localhost:8000/ws-create-reports');
+            this.socket = new WebSocket('ws://localhost:8000/create-reports');
 
             this.socket.onopen = () => {
             const reportRequest = {
@@ -123,20 +130,19 @@
 
             this.socket.onclose = () => {
             console.log('WebSocket connection closed');
+            this.loadFiles();
             };
         },
         printReports() {
-            if (this.socket) {
-                this.socket.close();
+            if (this.socket2) {
+                this.socket2.close();
             }
 
-            this.socket2 = new WebSocket('ws://localhost:8000/ws-create-reports');
+            this.socket2 = new WebSocket('ws://localhost:8000/print-reports');
 
             this.socket2.onopen = () => {
             const reportRequest = {
-                action: 'createReports',
-                startDate: this.startDate,
-                endDate: this.endDate
+                selectedFiles: this.selectedFiles
             };
             this.socket2.send(JSON.stringify(reportRequest));
             };
@@ -162,10 +168,10 @@
 .container {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center-start;
 }
 
-.multiselect-container {
+.multiselect-container, .progress-container2 {
   max-height: 50vh;
   max-width: 50vw;
   overflow: auto;
@@ -176,6 +182,7 @@
   background-color: #fff;
   box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
   transition: box-shadow 0.3s ease-in-out;
+  margin-right: 200px;
 }
 .form-check-label {
   transition: background-color 0.3s ease-in-out;
@@ -206,13 +213,17 @@
 .date-input {
   margin-right: 1rem;
 }
-<style scoped>
 .report-container {
   display: flex;
   align-items: center;
 }
 
 .progress-container {
+  margin-left: 200px; /* Adjust this value as needed */
+}
+
+.progress-bar-container {
   margin-left: 20px; /* Adjust this value as needed */
 }
+
 </style>
