@@ -27,7 +27,10 @@
       </div>
       <div class="progress-container2">
         <p>Files Selected: {{ selectedFiles.length }}</p>
-        <b-button @click="printReports" variant="primary">Print Reports</b-button>
+        <div class="button-container">
+          <b-button @click="printReports" variant="primary">Print Reports</b-button>
+          <b-button @click="emailReports" variant="primary">Email Reports</b-button>
+        </div>
         <div class="progress-bar-container">
             <p>{{ progress2.step }}</p>
             <progress :value="progress2.current" :max="progress2.total"></progress>
@@ -40,16 +43,18 @@
   
   <script>
   import axios from 'axios'
-  import config from '../../config'; // adjust the path according to your file structure
+  //import config from '/config.json'; // adjust the path according to your file structure
    
   export default {
     data() {
       return {
         socket: null,
+        socket2: null,
+        socket3: null,                
         files: [],
         selectedFiles: [],
         logMessages: [],
-        startDate: config.start_date,
+        startDate: '07/01/2023', //config.start_date,
         endDate: '',
         progress1: { current: 0, total: 0, step: 'Report Creation Progress Bar' },
         progress2: { current: 0, total: 0, step: 'Report Printing Progress Bar' },
@@ -57,7 +62,14 @@
       }
     },
     async created() {
-      console.log(config.start_date)
+      try {
+        await axios.get('http://localhost:8000/load_files'); // replace with your server's URL
+        console.log('Server is up');
+      } catch (error) {
+        console.log('Server is down');
+        this.progress1.step = 'API Server Down';
+        this.progress2.step = 'API Server Down';
+      }
       this.loadFiles();
 
         try {
@@ -159,6 +171,32 @@
             console.log('WebSocket connection closed');
             };
         },
+        emailReports() {
+            if (this.socket3) {
+                this.socket3.close();
+            }
+
+            this.socket3 = new WebSocket('ws://localhost:8000/email-reports');
+
+            this.socket3.onopen = () => {
+            const reportRequest = {
+                selectedFiles: this.selectedFiles
+            };
+            this.socket3.send(JSON.stringify(reportRequest));
+            };
+
+            this.socket3.onmessage = (event) => {
+            this.progress2 = JSON.parse(event.data);
+            };
+
+            this.socket3.onerror = (event) => {
+            console.error('WebSocket error:', event);
+            };
+
+            this.socket3.onclose = () => {
+            console.log('WebSocket connection closed');
+            };
+        },
     }
   }
   </script>
@@ -225,5 +263,8 @@
 .progress-bar-container {
   margin-left: 20px; /* Adjust this value as needed */
 }
-
+.button-container {
+  display: flex;
+  justify-content: space-between; /* Or use 'space-around' */
+}
 </style>

@@ -1,7 +1,238 @@
 <template>
-    <div>
-      <img alt="National Jewish Health" src="../assets/NJ_Logo.png">
-      <h1> Department of Medicine Clinical Information Update</h1>
-      <p>This is the Real Time  CIU Page.</p>
+  <div class="container">
+    <div class="header">
+      <img class="logo" alt="National Jewish Health" src="../assets/NJ_Logo.png">
+        <h1> Department of Medicine Dashboard</h1>
     </div>
-  </template>
+    <p></p>
+
+    <div class="multiselect-container">
+      <div class="date-inputs">
+        <label>Start Date: <input type="date" v-model="startDate" min="2023-07-01" class="date-input"></label>
+        <label>End Date: <input type="date" v-model="endDate" min="2023-07-01" class="date-input"></label>
+      </div>
+
+      <label>Department: 
+        <select v-model="selectedDepartment" @change="clearOtherSelections('department')">
+          <option disabled value="">Select Department</option>
+          <option v-for="department in departments" :key="department.DepartmentLevel" :value="department.DepartmentLevel">{{ department.DepartmentLevel }}</option>
+        </select>
+      </label>
+
+      <label>Division: 
+        <select v-model="selectedDivision" @change="clearOtherSelections('division')">
+          <option disabled value="">Select Division</option>
+          <option v-for="division in divisions" :key="division.DivisionNM" :value="division.DivisionNM">{{ division.DivisionNM }}</option>
+        </select>
+      </label>
+
+      <label>Provider: 
+        <select v-model="selectedProvider" @change="clearOtherSelections('provider')">
+          <option disabled value="">Select Provider</option>
+          <option v-for="provider in providers" :key="provider.ProviderID" :value="provider.ProviderID">{{ provider.ProviderNM }} - {{ provider.ProviderID }}</option>
+        </select>
+      </label>
+      <div class="button-progress-container">
+    <div class="button-container">
+      <button class="b-button" @click="createReport">Submit</button>
+    </div>
+    <div class="progress-bar-container">
+      <p>{{ progress.step }}</p>
+      <progress :value="progress.current" :max="progress.total"></progress>
+      <p>{{ progress.current }} / {{ progress.total }}</p>
+    </div>
+  </div>
+
+    </div>
+
+  </div>
+  <div class="image-container">
+    <img :src="imageName" alt="Report Image">
+  </div>
+</template>
+<script>
+import axios from 'axios';
+
+export default {
+  data() {
+    return {
+      departments: [],
+      divisions: [],
+      providers: [],
+      selectedDepartment: 'DOM',
+      selectedDivision: '',
+      selectedProvider: '',
+      startDate: '2023-07-01',
+      endDate: new Date().toISOString().substr(0, 10),
+      filterIDValue: 'DOM',
+      filterLevel: 'DepartmentLevel',       // DepartmentLevel, DivisionNM, BillingProviderID
+      progress: { current: 0, total: 0, step: 'Report Creation Progress Bar' },
+      imageName: '',
+    }
+  },
+  async created() {
+    const response = await axios.get('http://localhost:8000/dashboard-ciu');
+    this.departments = response.data.departments;
+    this.divisions = response.data.divisions;
+    this.providers = response.data.providers;
+    },
+    methods: {
+            clearOtherSelections(selected) {
+            if (selected === 'department') {
+              this.selectedDivision = '';
+              this.selectedProvider = '';
+              this.filterIDValue = this.selectedDepartment;
+              this.filterLevel = 'DepartmentLevel';
+            } else if (selected === 'division') {
+              this.selectedDepartment = '';
+              this.selectedProvider = '';
+              this.filterIDValue = this.selectedDivision;
+              this.filterLevel = 'DivisionNM';
+            } else if (selected === 'provider') {
+              this.selectedDepartment = '';
+              this.selectedDivision = '';
+              this.filterIDValue = this.selectedProvider;
+              this.filterLevel = 'BillingProviderID'; 
+            }
+          },
+          validateDates() {
+            if (this.startDate && this.endDate && this.startDate > this.endDate) {
+              this.errorMessage = 'End date must be later than start date.';
+            } else {
+              this.errorMessage = '';
+              this.createReport();
+            }
+          },
+          createReport() {
+          if (this.socket) {
+              this.socket.close();
+          }
+
+          this.socket = new WebSocket('ws://localhost:8000/dashboard-run-report');
+
+          this.socket.onopen = () => {
+          const reportRequest = {
+              startDate: this.startDate,
+              endDate: this.endDate,
+              action: 'createReport',
+              filter_id_value: this.filterIDValue,
+              filter_level: this.filterLevel
+          };
+          this.socket.send(JSON.stringify(reportRequest));
+          };
+
+          this.socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            console.log(data)
+            // Check if the received data contains an 'img_name' property
+            if (data.img_name) {
+              this.imageName = `http://localhost:8000/dashboard-get-image/${data.img_name}`;
+            } else {
+              this.progress = data;
+            }
+          };
+
+          this.socket.onerror = (event) => {
+          console.error('WebSocket error:', event);
+          };
+
+          this.socket.onclose = () => {
+          console.log('WebSocket connection closed');
+          };
+        }
+      }
+    }
+
+</script>
+
+  <!-- ... -->
+  <style scoped>
+.logo {
+  width: 200px; /* Adjust as needed */
+  height: auto; /* This will maintain the aspect ratio */
+}
+
+.header {
+  display: flex;
+  align-items: center; /* This will vertically align the image and the heading */
+}
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center-start;
+}
+
+.multiselect-container, .progress-container2 {
+  max-height: 50vh;
+  max-width: 50vw;
+  overflow: auto;
+  border: 1px solid #ced4da;
+  border-radius: 0.25rem;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  background-color: #fff;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  transition: box-shadow 0.3s ease-in-out;
+  margin-right: 200px;
+}
+.form-check-label {
+  transition: background-color 0.3s ease-in-out;
+}
+
+.form-check-label:hover {
+  background-color: #f8f9fa; /* Change this color to your preference */
+}
+.b-button {
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.3s ease-in-out;
+}
+
+.report-creation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid #ced4da;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.date-input {
+  margin-right: 1rem;
+}
+.report-container {
+  display: flex;
+  align-items: center;
+}
+
+.progress-container {
+  margin-left: 200px; /* Adjust this value as needed */
+}
+
+.button-container {
+  display: flex;
+  justify-content: space-between; /* Or use 'space-around' */
+}
+
+.image-container {
+  width: 100%;
+  overflow: auto;
+}
+.button-progress-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center; /* This will left-align the children */
+}
+
+.button-container {
+  margin-bottom: 1rem; /* Add some space between the button and the progress bar */
+  padding-left: 3rem; /* Add padding to the left side of the button */
+  margin-right: 5rem; /* Add some space between the button and the progress bar */  
+}
+
+
+</style>
