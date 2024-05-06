@@ -2,52 +2,50 @@
   <div class="container">
     <div class="header">
       <img class="logo" alt="National Jewish Health" src="../assets/NJ_Logo.png">
-        <h1> Department of Medicine Dashboard</h1>
-    </div>
-    <p></p>
+      <div class="multiselect-container">
+        <h2 class="page-heading">{{ pageHeading }}</h2>
+        <div class="date-inputs">
+          <label>Start Date: <input type="date" v-model="startDate" min="2023-07-01" class="date-input"></label>
+          <label>End Date: <input type="date" v-model="endDate" min="2023-07-01" class="date-input"></label>
+        </div>
 
-    <div class="multiselect-container">
-      <div class="date-inputs">
-        <label>Start Date: <input type="date" v-model="startDate" min="2023-07-01" class="date-input"></label>
-        <label>End Date: <input type="date" v-model="endDate" min="2023-07-01" class="date-input"></label>
+        <label>Department: 
+          <select v-model="selectedDepartment" @change="clearOtherSelections('department')">
+            <option disabled value="">Select Department</option>
+            <option v-for="department in departments" :key="department.DepartmentLevel" :value="department.DepartmentLevel">{{ department.DepartmentLevel }}</option>
+          </select>
+        </label>
+
+        <label>Division: 
+          <select v-model="selectedDivision" @change="clearOtherSelections('division')">
+            <option disabled value="">Select Division</option>
+            <option v-for="division in divisions" :key="division.DivisionNM" :value="division.DivisionNM">{{ division.DivisionNM }}</option>
+          </select>
+        </label>
+
+        <label>Provider: 
+          <select v-model="selectedProvider" @change="clearOtherSelections('provider')">
+            <option disabled value="">Select Provider</option>
+            <option v-for="provider in providers" :key="provider.ProviderID" :value="provider.ProviderID">{{ provider.ProviderNM }} - {{ provider.ProviderID }}</option>
+          </select>
+        </label>
+        <div class="button-progress-container">
+      <div class="button-container">
+        <button class="b-button" @click="createReport">Submit</button>
       </div>
-
-      <label>Department: 
-        <select v-model="selectedDepartment" @change="clearOtherSelections('department')">
-          <option disabled value="">Select Department</option>
-          <option v-for="department in departments" :key="department.DepartmentLevel" :value="department.DepartmentLevel">{{ department.DepartmentLevel }}</option>
-        </select>
-      </label>
-
-      <label>Division: 
-        <select v-model="selectedDivision" @change="clearOtherSelections('division')">
-          <option disabled value="">Select Division</option>
-          <option v-for="division in divisions" :key="division.DivisionNM" :value="division.DivisionNM">{{ division.DivisionNM }}</option>
-        </select>
-      </label>
-
-      <label>Provider: 
-        <select v-model="selectedProvider" @change="clearOtherSelections('provider')">
-          <option disabled value="">Select Provider</option>
-          <option v-for="provider in providers" :key="provider.ProviderID" :value="provider.ProviderID">{{ provider.ProviderNM }} - {{ provider.ProviderID }}</option>
-        </select>
-      </label>
-      <div class="button-progress-container">
-    <div class="button-container">
-      <button class="b-button" @click="createReport">Submit</button>
-    </div>
-    <div class="progress-bar-container">
-      <p>{{ progress.step }}</p>
-      <progress :value="progress.current" :max="progress.total"></progress>
-      <p>{{ progress.current }} / {{ progress.total }}</p>
+      <div class="progress-bar-container">
+        <p>{{ progress.step }}</p>
+        <progress :value="progress.current" :max="progress.total"></progress>
+        <p>{{ progress.current }} / {{ progress.total }}</p>
+      </div>
     </div>
   </div>
 
-    </div>
+      </div>
 
   </div>
   <div class="image-container">
-    <img :src="imageName" alt="Report Image">
+    <img :src="imageName" alt="Report Image" class="outlined-image">
   </div>
 </template>
 <script>
@@ -56,6 +54,7 @@ import axios from 'axios';
 export default {
   data() {
     return {
+      pageHeading: 'CIU Dashboard',
       departments: [],
       divisions: [],
       providers: [],
@@ -126,7 +125,8 @@ export default {
             console.log(data)
             // Check if the received data contains an 'img_name' property
             if (data.img_name) {
-              this.imageName = `http://localhost:8000/dashboard-get-image/${data.img_name}`;
+              const timestamp = new Date().getTime(); // Get the current timestamp
+              this.imageName = `http://localhost:8000/dashboard-get-image/${data.img_name}?t=${timestamp}`;
             } else {
               this.progress = data;
             }
@@ -150,6 +150,7 @@ export default {
 .logo {
   width: 200px; /* Adjust as needed */
   height: auto; /* This will maintain the aspect ratio */
+  margin-right: 1rem; /* Add some space between the logo and the multiselect-container */
 }
 
 .header {
@@ -233,6 +234,21 @@ export default {
   padding-left: 3rem; /* Add padding to the left side of the button */
   margin-right: 5rem; /* Add some space between the button and the progress bar */  
 }
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
 
-
+.header {
+  display: flex;
+  align-items: center; /* This will vertically align the image and the multiselect-container */
+}
+.outlined-image {
+  border: 2px solid #000; /* Change the color and width as needed */
+}
+.page-heading {
+  text-align: center;
+  margin-bottom: 1rem; /* Add some space below the heading */
+}
 </style>

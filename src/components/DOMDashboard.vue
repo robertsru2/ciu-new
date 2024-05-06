@@ -2,7 +2,6 @@
   <div>
     <img alt="National Jewish Health" src="../assets/NJ_Logo.png">
     <h1> Department of Medicine KPI Dashboards</h1>
-    <p>This is the DOM KPI Dashboard Page.</p>
     <div class="dashboard">
       <div> <router-link :to="{ name: 'CIUDashboard' }">CIU Dashboard</router-link></div>
       <div> <router-link :to="{ name: 'FillRateDashboard' }">Fill Rate Dashboard</router-link> </div>

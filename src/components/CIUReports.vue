@@ -47,6 +47,8 @@
    
   export default {
     data() {
+      let now = new Date();
+      let endDate = new Date(now.getFullYear(), now.getMonth(), 0);
       return {
         socket: null,
         socket2: null,
@@ -54,8 +56,8 @@
         files: [],
         selectedFiles: [],
         logMessages: [],
-        startDate: '07/01/2023', //config.start_date,
-        endDate: '',
+        startDate: '2023-07-01', //config.start_date,
+        endDate: endDate.toISOString().substr(0, 10), // Use the calculated endDate here
         progress1: { current: 0, total: 0, step: 'Report Creation Progress Bar' },
         progress2: { current: 0, total: 0, step: 'Report Printing Progress Bar' },
         errorMessage: ''
