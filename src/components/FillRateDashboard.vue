@@ -29,6 +29,12 @@
             <option v-for="provider in providers" :key="provider.ProviderID" :value="provider.ProviderID">{{ provider.ProviderNM }} - {{ provider.ProviderID }}</option>
           </select>
         </label>
+        <label>ProviderType: 
+          <select v-model="selectedProviderType" @change="clearOtherSelections('providerType')">
+            <option disabled value="">Select Provider Type</option>
+            <option v-for="providerType in providertypes" :key="providerType.DoctorDegreeNM" :value="providerType.DoctorDegreeNM">{{ providerType.DoctorDegreeNM }}</option>
+          </select>
+        </label>        
         <div class="button-progress-container">
       <div class="button-container">
         <button class="b-button" @click="createReport">Submit</button>
@@ -60,9 +66,11 @@ export default {
       departments: [],
       divisions: [],
       providers: [],
+      providertypes: [],
       selectedDepartment: 'DOM',
       selectedDivision: '',
       selectedProvider: '',
+      selectedProviderType: '',
       startDate: '2023-07-01',
       endDate: endDate.toISOString().substr(0, 10), // Use the calculated endDate here
       filterIDValue: 'DOM',
@@ -76,24 +84,34 @@ export default {
     this.departments = response.data.departments;
     this.divisions = response.data.divisions;
     this.providers = response.data.providers;
+    this.providertypes = response.data.providertypes;
     },
     methods: {
             clearOtherSelections(selected) {
             if (selected === 'department') {
               this.selectedDivision = '';
               this.selectedProvider = '';
+              this.selectedProvidertype = '';
               this.filterIDValue = this.selectedDepartment;
               this.filterLevel = 'DepartmentLevel';
             } else if (selected === 'division') {
               this.selectedDepartment = '';
               this.selectedProvider = '';
+              this.selectedProviderType = ''; 
               this.filterIDValue = this.selectedDivision;
               this.filterLevel = 'DivisionNM';
             } else if (selected === 'provider') {
               this.selectedDepartment = '';
               this.selectedDivision = '';
+              this.selectedProviderType = '';
               this.filterIDValue = this.selectedProvider;
-              this.filterLevel = 'BillingProviderID'; 
+              this.filterLevel = 'ProviderID'; 
+            } else if (selected === 'providerType') {
+              this.selectedDepartment = '';
+              this.selectedDivision = '';
+              this.selectedProvider = '';
+              this.filterIDValue = this.selectedProviderType;
+              this.filterLevel = 'DoctorDegreeNM'; 
             }
           },
           validateDates() {
@@ -109,13 +127,13 @@ export default {
               this.socket.close();
           }
 
-          this.socket = new WebSocket('ws://localhost:8000/dashboard-run-report');
+          this.socket = new WebSocket('ws://localhost:8000/fill-rate-dashboard');
 
           this.socket.onopen = () => {
           const reportRequest = {
               startDate: this.startDate,
               endDate: this.endDate,
-              action: 'createReport',
+              action: 'createReportFillRate',
               filter_id_value: this.filterIDValue,
               filter_level: this.filterLevel
           };
@@ -248,6 +266,14 @@ export default {
 }
 .outlined-image {
   border: 2px solid #000; /* Change the color and width as needed */
+  margin-bottom: 1rem; /* Add some space below the heading */
+  width: 80%; /* Set the width of the image to 100% */
+  height: auto; /* This will maintain the aspect ratio of the image */
+  padding: 2rem; /* Add padding around the image */
+  box-sizing: border-box; /* Include the border in the total width and height of the image */
+  border-radius: 0.25rem; /* Add rounded corners to the image */
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15); /* Add a box shadow to the image */
+  transition: box-shadow 0.3s ease-in-out; /* Add a smooth transition effect to the box shadow */
 }
 .page-heading {
   text-align: center;
