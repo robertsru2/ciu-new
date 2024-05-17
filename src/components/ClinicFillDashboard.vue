@@ -48,16 +48,14 @@
       <!-- Add a button that triggers the download when clicked -->
         <button class="b-button" @click="downloadData">Download Data</button>      
      </div>
-
     </div>
   </div>
+ </div>
 
-      </div>
-
-  </div>
-  <div class="image-container">
+</div>
+<div class="image-container" style="overflow:auto">
     <img :src="imageName" alt="Report Image" class="outlined-image">
-  </div>
+</div>
 </template>
 <script>
 import axios from 'axios';
@@ -65,9 +63,10 @@ import axios from 'axios';
 export default {
   data() {
     let now = new Date();
-    let endDate = new Date(now.getFullYear(), now.getMonth(), 0);    
+    let endDate = new Date();    
+    endDate.setDate(now.getDate() + 14);
     return {
-      pageHeading: 'Fill Rate Dashboard',
+      pageHeading: 'Today/2 Week Look Ahead Clinic Fill Rate Dashboard',
       departments: [],
       divisions: [],
       providers: [],
@@ -76,7 +75,7 @@ export default {
       selectedDivision: '',
       selectedProvider: '',
       selectedProviderType: '',
-      startDate: '2023-07-01',
+      startDate: now.toISOString().substr(0, 10),
       endDate: endDate.toISOString().substr(0, 10), // Use the calculated endDate here
       filterIDValue: 'DOM',
       filterLevel: 'DepartmentLevel',       // DepartmentLevel, DivisionNM, BillingProviderID
@@ -132,7 +131,7 @@ export default {
               this.socket.close();
           }
 
-          this.socket = new WebSocket('ws://localhost:8000/fill-rate-dashboard');
+          this.socket = new WebSocket('ws://localhost:8000/clinic-fill-rate-dashboard');
 
           this.socket.onopen = () => {
           const reportRequest = {

@@ -6,7 +6,7 @@ import DOMDashboard from '@/components/DOMDashboard.vue'
 import CIUDashboard from '@/components/CIUDashboard.vue'
 import FillRateDashboard from '@/components/FillRateDashboard.vue'
 import ProviderTimeReport from '@/components/ProviderTimeReport.vue'
-
+import ClinicFillDashboard from '@/components/ClinicFillDashboard' // Import the new component
 
 const routes = [
   { path: '/dom-dashboard', name: 'DOMDashboard', component: DOMDashboard },
@@ -15,6 +15,7 @@ const routes = [
   { path: '/home', name: 'Home', component: HomeView },
   { path: '/ciu-dashboard', name: 'CIUDashboard', component: CIUDashboard },
   { path: '/fill-rate-dashboard', name: 'FillRateDashboard', component: FillRateDashboard },
+  { path: '/clinic-fill-dashboard', name: 'ClinicFillDashboard', component: ClinicFillDashboard }, // Add the new route
   { path: '/provider-time-report', name: 'ProviderTimeReport', component: ProviderTimeReport }
   // other routes... 
 ]

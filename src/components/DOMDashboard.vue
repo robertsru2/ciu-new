@@ -1,52 +1,59 @@
 <template>
-  <div>
-    <img alt="National Jewish Health" src="../assets/NJ_Logo.png">
-    <h1> Department of Medicine KPI Dashboards</h1>
-    <div class="dashboard">
-      <div> <router-link :to="{ name: 'CIUDashboard' }">CIU Dashboard</router-link></div>
-      <div> <router-link :to="{ name: 'FillRateDashboard' }">Fill Rate Dashboard</router-link> </div>
-      <div> <router-link :to="{ name: 'ProviderTimeReport' }">Provider Time Report</router-link> </div> 
+  <div class="container">
+    <div class="header">
+      <div class="logo-header">
+        <img class="logo" alt="National Jewish Health" src="../assets/NJ_Logo.png">
+        <h2 class="page-heading">{{ pageHeading }}</h2>
+      </div>
+      <div class="dashboard">
+        <div> <router-link :to="{ name: 'CIUDashboard' }">CIU Dashboard</router-link></div>
+        <div> <router-link :to="{ name: 'FillRateDashboard' }">Fill Rate Dashboard</router-link> </div>
+        <div> <router-link :to="{ name: 'ProviderTimeReport' }">Provider Time Report</router-link> </div> 
+        <div> <router-link :to="{ name: 'ClinicFillDashboard' }">2-Week Clinic Fill Report</router-link> </div>         
+      </div>
     </div>
-  </div>
+  </div> 
 </template>
-  
-  <!-- ... -->
-  
-  <style scoped>
+
+<script>
+
+export default {
+  data() {
+      return {
+        pageHeading: 'Fill Rate Dashboard',
+      }
+  }
+}
+ </script>
+    
+ <style scoped>
   .container {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
   }
-  
-  .multiselect-container {
-    max-height: 50vh;
-    max-width: 50vw;
-    overflow: auto;
-    border: 1px solid #ced4da;
-    border-radius: 0.25rem;
-    padding: 0.5rem;
-    margin-bottom: 1rem;
-    background-color: #fff;
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-    transition: box-shadow 0.3s ease-in-out;
-  }
-  
-  .b-button {
-    align-self: center;
-    background-color: #007bff;
-    color: #fff;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 0.25rem;
-    transition: background-color 0.3s ease-in-out;
-  }
-  
-  .form-check-label {
-    transition: background-color 0.3s ease-in-out;
-  }
-  
-  .form-check-label:hover {
-    background-color: #f8f9fa;
-  }
-  </style>
+  .header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.logo-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding-right: 60px; /* Adjust this value as needed */
+}
+
+.page-heading {
+  margin-left: 10px;
+  padding-left: 60px;
+}
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-top: 20px; /* Adjust this value as needed */
+}
+</style>
