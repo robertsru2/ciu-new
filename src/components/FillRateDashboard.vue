@@ -75,7 +75,7 @@ export default {
       selectedDepartment: 'DOM',
       selectedDivision: '',
       selectedProvider: '',
-      selectedProviderType: '',
+      selectedProviderType: 'ALL',
       startDate: '2023-07-01',
       endDate: endDate.toISOString().substr(0, 10), // Use the calculated endDate here
       filterIDValue: 'DOM',
@@ -92,31 +92,34 @@ export default {
     this.providertypes = response.data.providertypes;
     },
     methods: {
-            clearOtherSelections(selected) {
+      clearOtherSelections(selected) {
             if (selected === 'department') {
               this.selectedDivision = '';
               this.selectedProvider = '';
-              this.selectedProvidertype = '';
-              this.filterIDValue = this.selectedDepartment;
-              this.filterLevel = 'DepartmentLevel';
+              this.filterIDValue = this.selectedDepartment + '|' + this.selectedProviderType;
+              this.filterLevel = 'DepartmentLevel|DoctorDegreeNM';
             } else if (selected === 'division') {
               this.selectedDepartment = '';
               this.selectedProvider = '';
-              this.selectedProviderType = ''; 
-              this.filterIDValue = this.selectedDivision;
-              this.filterLevel = 'DivisionNM';
+              this.filterIDValue = this.selectedDivision + '|' + this.selectedProviderType;
+              this.filterLevel = 'DivisionNM|DoctorDegreeNM';
             } else if (selected === 'provider') {
-              this.selectedDepartment = '';
-              this.selectedDivision = '';
               this.selectedProviderType = '';
-              this.filterIDValue = this.selectedProvider;
-              this.filterLevel = 'ProviderID'; 
-            } else if (selected === 'providerType') {
-              this.selectedDepartment = '';
+              this.selectedDepartment = ''; 
               this.selectedDivision = '';
+              this.filterIDValue = this.selectedProvider;
+              this.filterLevel = 'BillingProviderID'; 
+            } else if (selected === 'providerType') {
+              if (this.selectedDivision) {
+                this.selectedDepartment = '';
+                this.filterIDValue = this.selectedProviderType + '|' + this.selectedDivision;
+                this.filterLevel = 'DoctorDegreeNM|DivisionNM'; 
+              } else if (this.selectedDepartment) {
+                this.selectedDivision = '';
+                this.filterIDValue = this.selectedProviderType + '|' + this.selectedDepartment;
+                this.filterLevel = 'DoctorDegreeNM|DepartmentLevel'; 
+              }
               this.selectedProvider = '';
-              this.filterIDValue = this.selectedProviderType;
-              this.filterLevel = 'DoctorDegreeNM'; 
             }
           },
           validateDates() {

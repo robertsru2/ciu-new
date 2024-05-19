@@ -23,10 +23,10 @@
           </select>
         </label>
 
-        <label>Provider: 
-          <select v-model="selectedProvider" @change="clearOtherSelections('provider')">
-            <option disabled value="">Select Provider</option>
-            <option v-for="provider in providers" :key="provider.ProviderID" :value="provider.ProviderID">{{ provider.ProviderNM }} - {{ provider.ProviderID }}</option>
+        <label>Clinic: 
+          <select v-model="selectedClinic" @change="clearOtherSelections('clinic')">
+            <option disabled value="">Select Clinic</option>
+            <option v-for="clinic in clinics" :key="clinic.DepartmentNM" :value="clinic.DepartmentNM">{{ clinic.DepartmentNM }}</option>
           </select>
         </label>
         <label>ProviderType: 
@@ -66,15 +66,15 @@ export default {
     let endDate = new Date();    
     endDate.setDate(now.getDate() + 14);
     return {
-      pageHeading: 'Today/2 Week Look Ahead Clinic Fill Rate Dashboard',
+      pageHeading: '2 Week Look Ahead Clinic Fill Rate Dashboard',
       departments: [],
       divisions: [],
-      providers: [],
       providertypes: [],
+      clinics: [],      
       selectedDepartment: 'DOM',
       selectedDivision: '',
-      selectedProvider: '',
-      selectedProviderType: '',
+      selectedClinic: '',
+      selectedProviderType: 'ALL',
       startDate: now.toISOString().substr(0, 10),
       endDate: endDate.toISOString().substr(0, 10), // Use the calculated endDate here
       filterIDValue: 'DOM',
@@ -87,35 +87,41 @@ export default {
     const response = await axios.get('http://localhost:8000/dashboard-ciu');
     this.departments = response.data.departments;
     this.divisions = response.data.divisions;
-    this.providers = response.data.providers;
     this.providertypes = response.data.providertypes;
+    this.clinics = response.data.clinics;
     },
     methods: {
-            clearOtherSelections(selected) {
+      clearOtherSelections(selected) {
             if (selected === 'department') {
               this.selectedDivision = '';
-              this.selectedProvider = '';
-              this.selectedProvidertype = '';
-              this.filterIDValue = this.selectedDepartment;
-              this.filterLevel = 'DepartmentLevel';
-            } else if (selected === 'division') {
+              this.selectedClinic = '';
+              this.filterIDValue = this.selectedDepartment + '|' + this.selectedProviderType;
+              this.filterLevel = 'DepartmentLevel|DoctorDegreeNM';
+            } else if (selected === 'division') { 
               this.selectedDepartment = '';
-              this.selectedProvider = '';
-              this.selectedProviderType = ''; 
-              this.filterIDValue = this.selectedDivision;
-              this.filterLevel = 'DivisionNM';
-            } else if (selected === 'provider') {
-              this.selectedDepartment = '';
+              this.selectedClinic = '';
+              this.filterIDValue = this.selectedDivision + '|' + this.selectedProviderType;
+              this.filterLevel = 'DivisionNM|DoctorDegreeNM';
+            } else if (selected === 'clinic') {
+              this.selectedDepartment = ''; 
               this.selectedDivision = '';
-              this.selectedProviderType = '';
-              this.filterIDValue = this.selectedProvider;
-              this.filterLevel = 'ProviderID'; 
+              this.filterIDValue = this.selectedClinic + '|' + this.selectedProviderType;
+              this.filterLevel = 'DepartmentNM|DoctorDegreeNM'; 
             } else if (selected === 'providerType') {
-              this.selectedDepartment = '';
-              this.selectedDivision = '';
-              this.selectedProvider = '';
-              this.filterIDValue = this.selectedProviderType;
-              this.filterLevel = 'DoctorDegreeNM'; 
+              if (this.selectedDivision) {
+                this.selectedDepartment = '';
+                this.filterIDValue = this.selectedProviderType + '|' + this.selectedDivision;
+                this.filterLevel = 'DoctorDegreeNM|DivisionNM'; 
+              } else if (this.selectedDepartment) {
+                this.selectedDivision = '';
+                this.filterIDValue = this.selectedProviderType + '|' + this.selectedDepartment;
+                this.filterLevel = 'DoctorDegreeNM|DepartmentLevel'; 
+              } else if (this.selectedClinic) {
+                this.selectedDepartment = '';
+                this.selectedDivision = '';
+                this.filterIDValue = this.selectedProviderType + '|' + this.selectedClinic;
+                this.filterLevel = 'DoctorDegreeNM|DepartmentNM'; 
+              } 
             }
           },
           validateDates() {

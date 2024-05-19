@@ -8,7 +8,6 @@
           <label>Start Date: <input type="date" v-model="startDate" min="2023-07-01" class="date-input"></label>
           <label>End Date: <input type="date" v-model="endDate" min="2023-07-01" class="date-input"></label>
         </div>
-
         <label>Department: 
           <select v-model="selectedDepartment" @change="clearOtherSelections('department')">
             <option disabled value="">Select Department</option>
@@ -68,7 +67,7 @@ export default {
       selectedDepartment: 'DOM',
       selectedDivision: '',
       selectedProvider: '',
-      selectedProviderType: '',
+      selectedProviderType: 'ALL',    // ALL is the defaul value
       startDate: '2023-07-01',
       endDate: new Date().toISOString().substr(0, 10),
       filterIDValue: 'DOM',
@@ -87,29 +86,32 @@ export default {
     methods: {
             clearOtherSelections(selected) {
             if (selected === 'department') {
-              this.selectedProvidertype = '';
               this.selectedDivision = '';
               this.selectedProvider = '';
-              this.filterIDValue = this.selectedDepartment;
-              this.filterLevel = 'DepartmentLevel';
+              this.filterIDValue = this.selectedDepartment + '|' + this.selectedProviderType;
+              this.filterLevel = 'DepartmentLevel|ProviderType';
             } else if (selected === 'division') {
-              this.selectedProviderType = ''; 
               this.selectedDepartment = '';
               this.selectedProvider = '';
-              this.filterIDValue = this.selectedDivision;
-              this.filterLevel = 'DivisionNM';
+              this.filterIDValue = this.selectedDivision + '|' + this.selectedProviderType;
+              this.filterLevel = 'DivisionNM|ProviderType';
             } else if (selected === 'provider') {
               this.selectedProviderType = '';
-              this.selectedDepartment = '';
+              this.selectedDepartment = ''; 
               this.selectedDivision = '';
               this.filterIDValue = this.selectedProvider;
               this.filterLevel = 'BillingProviderID'; 
             } else if (selected === 'providerType') {
-              this.selectedDepartment = '';
-              this.selectedDivision = '';
+              if (this.selectedDivision) {
+                this.selectedDepartment = '';
+                this.filterIDValue = this.selectedProviderType + '|' + this.selectedDivision;
+                this.filterLevel = 'DoctorDegreeNM|DivisionNM'; 
+              } else if (this.selectedDepartment) {
+                this.selectedDivision = '';
+                this.filterIDValue = this.selectedProviderType + '|' + this.selectedDepartment;
+                this.filterLevel = 'DoctorDegreeNM|DepartmentLevel'; 
+              }
               this.selectedProvider = '';
-              this.filterIDValue = this.selectedProviderType;
-              this.filterLevel = 'DoctorDegreeNM'; 
             }
           },
           validateDates() {
