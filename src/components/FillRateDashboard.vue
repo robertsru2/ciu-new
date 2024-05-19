@@ -176,15 +176,15 @@ export default {
           const reportRequest = {
               startDate: this.startDate,
               endDate: this.endDate,
-              action: 'downloadFile',
+              action: 'fillDashboardDownload',
               filter_id_value: this.filterIDValue,
               filter_level: this.filterLevel
           };
  
-          const response = await axios.post('localhost:8000/dashboard-get-file/', reportRequest, {
-             responseType: 'blob', // Important for creating a downloadable file
+          console.log(reportRequest)
+          const response = await axios.post('http://localhost:8000/dashboard-get-file/', reportRequest, {
+            responseType: 'blob', // Important for creating a downloadable file
           });
-
           // Create a blob URL representing the data
           const url = window.URL.createObjectURL(new Blob([response.data]));
 

@@ -35,24 +35,27 @@
           </select>  
         </label>      
         <div class="button-progress-container">
-      <div class="button-container">
-        <button class="b-button" @click="createReport">Submit</button>
-      </div>
-      <div class="progress-bar-container">
-        <p>{{ progress.step }}</p>
-        <progress :value="progress.current" :max="progress.total"></progress>
-        <p>{{ progress.current }} / {{ progress.total }}</p>
+          <div class="button-container">
+            <button class="b-button" @click="createReport">Submit</button>
+          </div>
+          <div class="progress-bar-container">
+            <p>{{ progress.step }}</p>
+            <progress :value="progress.current" :max="progress.total"></progress>
+            <p>{{ progress.current }} / {{ progress.total }}</p>
+          </div>
+          <div class = "download-button">
+            <!-- Add a button that triggers the download when clicked -->
+            <button class="b-button" @click="downloadData">Download Data</button>      
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-
-      </div>
-
-  </div>
-  <div class="image-container">
-    <img :src="imageName" alt="Report Image" class="outlined-image">
+    <div class="image-container">
+      <img :src="imageName" alt="Report Image" class="outlined-image">
+    </div>
   </div>
 </template>
+
 <script>
 import axios from 'axios';
 
@@ -84,85 +87,112 @@ export default {
     this.providertypes = response.data.providertypes;
     },
     methods: {
-            clearOtherSelections(selected) {
-            if (selected === 'department') {
-              this.selectedDivision = '';
-              this.selectedProvider = '';
-              this.filterIDValue = this.selectedDepartment + '|' + this.selectedProviderType;
-              this.filterLevel = 'DepartmentLevel|ProviderType';
-            } else if (selected === 'division') {
-              this.selectedDepartment = '';
-              this.selectedProvider = '';
-              this.filterIDValue = this.selectedDivision + '|' + this.selectedProviderType;
-              this.filterLevel = 'DivisionNM|ProviderType';
-            } else if (selected === 'provider') {
-              this.selectedProviderType = '';
-              this.selectedDepartment = ''; 
-              this.selectedDivision = '';
-              this.filterIDValue = this.selectedProvider;
-              this.filterLevel = 'BillingProviderID'; 
-            } else if (selected === 'providerType') {
-              if (this.selectedDivision) {
-                this.selectedDepartment = '';
-                this.filterIDValue = this.selectedProviderType + '|' + this.selectedDivision;
-                this.filterLevel = 'DoctorDegreeNM|DivisionNM'; 
-              } else if (this.selectedDepartment) {
-                this.selectedDivision = '';
-                this.filterIDValue = this.selectedProviderType + '|' + this.selectedDepartment;
-                this.filterLevel = 'DoctorDegreeNM|DepartmentLevel'; 
-              }
-              this.selectedProvider = '';
-            }
-          },
-          validateDates() {
-            if (this.startDate && this.endDate && this.startDate > this.endDate) {
-              this.errorMessage = 'End date must be later than start date.';
-            } else {
-              this.errorMessage = '';
-              this.createReport();
-            }
-          },
-          createReport() {
-          if (this.socket) {
-              this.socket.close();
+      clearOtherSelections(selected) {
+        if (selected === 'department') {
+          this.selectedDivision = '';
+          this.selectedProvider = '';
+          this.filterIDValue = this.selectedDepartment + '|' + this.selectedProviderType;
+          this.filterLevel = 'DepartmentLevel|ProviderType';
+        } else if (selected === 'division') {
+          this.selectedDepartment = '';
+          this.selectedProvider = '';
+          this.filterIDValue = this.selectedDivision + '|' + this.selectedProviderType;
+          this.filterLevel = 'DivisionNM|ProviderType';
+        } else if (selected === 'provider') {
+          this.selectedProviderType = '';
+          this.selectedDepartment = ''; 
+          this.selectedDivision = '';
+          this.filterIDValue = this.selectedProvider;
+          this.filterLevel = 'BillingProviderID'; 
+        } else if (selected === 'providerType') {
+          if (this.selectedDivision) {
+            this.selectedDepartment = '';
+            this.filterIDValue = this.selectedProviderType + '|' + this.selectedDivision;
+            this.filterLevel = 'DoctorDegreeNM|DivisionNM'; 
+          } else if (this.selectedDepartment) {
+            this.selectedDivision = '';
+            this.filterIDValue = this.selectedProviderType + '|' + this.selectedDepartment;
+            this.filterLevel = 'DoctorDegreeNM|DepartmentLevel'; 
           }
+          this.selectedProvider = '';
+        }
+      },
+      validateDates() {
+        if (this.startDate && this.endDate && this.startDate > this.endDate) {
+          this.errorMessage = 'End date must be later than start date.';
+        } else {
+          this.errorMessage = '';
+          this.createReport();
+        }
+      },
+      createReport() {
+        if (this.socket) {
+          this.socket.close();
+        }
 
-          this.socket = new WebSocket('ws://localhost:8000/dashboard-run-report');
+        this.socket = new WebSocket('ws://localhost:8000/dashboard-run-report');
 
-          this.socket.onopen = () => {
+        this.socket.onopen = () => {
           const reportRequest = {
-              startDate: this.startDate,
-              endDate: this.endDate,
-              action: 'createReportCIUDashboard',
-              filter_id_value: this.filterIDValue,
-              filter_level: this.filterLevel
+            startDate: this.startDate,
+            endDate: this.endDate,
+            action: 'createReportCIUDashboard',
+            filter_id_value: this.filterIDValue,
+            filter_level: this.filterLevel
           };
           this.socket.send(JSON.stringify(reportRequest));
-          };
+        };
 
-          this.socket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            console.log(data)
-            // Check if the received data contains an 'img_name' property
-            if (data.img_name) {
-              const timestamp = new Date().getTime(); // Get the current timestamp
-              this.imageName = `http://localhost:8000/dashboard-get-image/${data.img_name}?t=${timestamp}`;
-            } else {
-              this.progress = data;
-            }
-          };
+        this.socket.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          console.log(data)
+          // Check if the received data contains an 'img_name' property
+          if (data.img_name) {
+            const timestamp = new Date().getTime(); // Get the current timestamp
+            this.imageName = `http://localhost:8000/dashboard-get-image/${data.img_name}?t=${timestamp}`;
+          } else {
+            this.progress = data;
+          }
+        };
 
-          this.socket.onerror = (event) => {
+        this.socket.onerror = (event) => {
           console.error('WebSocket error:', event);
-          };
+        };
 
-          this.socket.onclose = () => {
+        this.socket.onclose = () => {
           console.log('WebSocket connection closed');
+        };
+      },
+      async downloadData() {
+        try {
+          console.log('downloadData method called')
+          const reportRequest = {
+            startDate: this.startDate,
+            endDate: this.endDate,
+            action: 'CIUDashboardDownloadData',
+            filter_id_value: this.filterIDValue,
+            filter_level: this.filterLevel
           };
-        }
-      }
-    }
+          console.log(reportRequest)
+          const response = await axios.post('http://localhost:8000/dashboard-get-file/', reportRequest, {
+            responseType: 'blob', // Important for creating a downloadable file
+          });
+          // Create a blob URL representing the data
+          const url = window.URL.createObjectURL(new Blob([response.data]));
 
+          // Create a link element and programmatically click it to start the download
+          const link = document.createElement('a');
+          link.href = url;
+          link.setAttribute('download', 'data.csv'); // Choose a suitable filename and extension
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } catch (error) {
+          console.error('Failed to download data:', error);
+        }
+      },
+    },
+  }
 </script>
 
   <!-- ... -->
