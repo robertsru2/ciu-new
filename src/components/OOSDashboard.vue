@@ -66,7 +66,7 @@ import axios from 'axios';
 export default {
   data() {
     return {
-      pageHeading: 'CIU Dashboard',
+      pageHeading: 'Out of State Patients Dashboard',
       departments: [],
       divisions: [],
       providers: [],
@@ -132,13 +132,13 @@ export default {
           this.socket.close();
         }
 
-        this.socket = new WebSocket('ws://localhost:8000/dashboard-run-report');
+        this.socket = new WebSocket('ws://localhost:8000/oos-dashboard');
 
         this.socket.onopen = () => {
           const reportRequest = {
             startDate: this.startDate,
             endDate: this.endDate,
-            action: 'createReportCIUDashboard',
+            action: 'createReportOOSDashboard',
             filter_id_value: this.filterIDValue,
             filter_level: this.filterLevel
           };
@@ -299,7 +299,7 @@ export default {
 .outlined-image {
   border: 2px solid #000; /* Change the color and width as needed */
   margin-bottom: 1rem; /* Add some space below the heading */
-  width: 90%; /* Set the width of the image to 100% */
+  width: 95%; /* Set the width of the image to 100% */
   height: auto; /* This will maintain the aspect ratio of the image */
   padding: 1rem; /* Add padding around the image */
   box-sizing: border-box; /* Include the border in the total width and height of the image */

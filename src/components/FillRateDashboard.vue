@@ -52,9 +52,12 @@
     </div>
   </div>
 
-      </div>
-
   </div>
+  </div>
+  <div class="selection-string">
+      <p>Filter ID Value: {{ filterIDValue }}</p>
+      <p>Filter Level: {{ filterLevel }}</p>
+</div>
   <div class="image-container">
     <img :src="imageName" alt="Report Image" class="outlined-image">
   </div>
@@ -108,7 +111,7 @@ export default {
               this.selectedDepartment = ''; 
               this.selectedDivision = '';
               this.filterIDValue = this.selectedProvider;
-              this.filterLevel = 'BillingProviderID'; 
+              this.filterLevel = 'ProviderID'; 
             } else if (selected === 'providerType') {
               if (this.selectedDivision) {
                 this.selectedDepartment = '';
@@ -118,6 +121,10 @@ export default {
                 this.selectedDivision = '';
                 this.filterIDValue = this.selectedProviderType + '|' + this.selectedDepartment;
                 this.filterLevel = 'DoctorDegreeNM|DepartmentLevel'; 
+              } else {
+                this.selectedProvider = '';
+                this.filterIDValue = this.selectedProviderType;
+                this.filterLevel = 'DoctorDegreeNM'; 
               }
               this.selectedProvider = '';
             }
@@ -207,7 +214,7 @@ export default {
   <!-- ... -->
   <style scoped>
 .logo {
-  width: 200px; /* Adjust as needed */
+  width: 150px; /* Adjust as needed */
   height: auto; /* This will maintain the aspect ratio */
   margin-right: 1rem; /* Add some space between the logo and the multiselect-container */
 }

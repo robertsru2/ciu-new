@@ -8,24 +8,10 @@
           <label>Start Date: <input type="date" v-model="startDate" min="2023-07-01" class="date-input"></label>
           <label>End Date: <input type="date" v-model="endDate" min="2023-07-01" class="date-input"></label>
         </div>
-        <label>Department: 
-          <select v-model="selectedDepartment" @change="clearOtherSelections('department')">
-            <option disabled value="">Select Department</option>
-            <option v-for="department in departments" :key="department.DepartmentLevel" :value="department.DepartmentLevel">{{ department.DepartmentLevel }}</option>
-          </select>
-        </label>
-
         <label>Division: 
           <select v-model="selectedDivision" @change="clearOtherSelections('division')">
             <option disabled value="">Select Division</option>
             <option v-for="division in divisions" :key="division.DivisionNM" :value="division.DivisionNM">{{ division.DivisionNM }}</option>
-          </select>
-        </label>
-
-        <label>Provider: 
-          <select v-model="selectedProvider" @change="clearOtherSelections('provider')">
-            <option disabled value="">Select Provider</option>
-            <option v-for="provider in providers" :key="provider.ProviderID" :value="provider.ProviderID">{{ provider.ProviderNM }} - {{ provider.ProviderID }}</option>
           </select>
         </label>
         <label>ProviderType: 
@@ -66,59 +52,36 @@ import axios from 'axios';
 export default {
   data() {
     return {
-      pageHeading: 'CIU Dashboard',
-      departments: [],
+      pageHeading: 'Summary Production Dashboard',
       divisions: [],
-      providers: [],
       providertypes: [],
-      selectedDepartment: '',
-      selectedDivision: '',
-      selectedProvider: '',
-      selectedProviderType: '',    // ALL is the defaul value
+      selectedDivision: 'AllergyImmunology',
+      selectedProviderType: 'ALL',    // ALL is the defaul value
       startDate: '2023-07-01',
       endDate: new Date().toISOString().substr(0, 10),
-      filterIDValue: 'DOM',
-      filterLevel: 'DepartmentLevel',       // DepartmentLevel, DivisionNM, BillingProviderID
+      filterIDValue: 'AllergyImmunology',
+      filterLevel: 'DivisionNM',       // DepartmentLevel, DivisionNM, BillingProviderID
       progress: { current: 0, total: 0, step: 'Report Creation Progress Bar' },
       imageName: '',
     }
   },
   async created() {
     const response = await axios.get('http://localhost:8000/dashboard-ciu');
-    this.departments = response.data.departments;
     this.divisions = response.data.divisions;
-    this.providers = response.data.providers;
     this.providertypes = response.data.providertypes;
     },
     methods: {
       clearOtherSelections(selected) {
-        if (selected === 'department') {
-          this.selectedDivision = '';
-          this.selectedProvider = '';
-          this.selectedProviderType = '';
-          this.filterIDValue = this.selectedDepartment    //+ '|' + this.selectedProviderType;
-          this.filterLevel = 'DepartmentLevel'           // 'DepartmentLevel|ProviderType';
-        } else if (selected === 'division') {
-          this.selectedDepartment = '';
-          this.selectedProvider = '';
+         if (selected === 'division') {
           this.selectedProviderType = '';
           this.filterIDValue = this.selectedDivision    // + '|' + this.selectedProviderType;
           this.filterLevel = 'DivisionNM'       // |ProviderType';
-        } else if (selected === 'provider') {
-          this.selectedProviderType = '';
-          this.selectedDepartment = ''; 
-          this.selectedDivision = '';
-          this.selectedProviderType = '';
-          this.filterIDValue = this.selectedProvider;
-          this.filterLevel = 'BillingProviderID'; 
         } else if (selected === 'providerType') {
-            this.selectedDepartment = '';
-            this.selectedDivision = '';
-            this.selectedProvider = '';
-            this.filterIDValue = this.selectedProviderType  //+ '|' + this.selectedDivision;
-            this.filterLevel = 'DoctorDegreeNM'     //|DivisionNM'; 
+          this.selectedDivision = '';
+            this.filterIDValue = this.selectedProviderType;  //+ '|' + this.selectedDivision;
+            this.filterLevel = 'DoctorDegreeNM';     //|DivisionNM'; 
         }
-        },
+      },
       validateDates() {
         if (this.startDate && this.endDate && this.startDate > this.endDate) {
           this.errorMessage = 'End date must be later than start date.';
@@ -132,13 +95,13 @@ export default {
           this.socket.close();
         }
 
-        this.socket = new WebSocket('ws://localhost:8000/dashboard-run-report');
+        this.socket = new WebSocket('ws://localhost:8000/summary-run-report');
 
         this.socket.onopen = () => {
           const reportRequest = {
             startDate: this.startDate,
             endDate: this.endDate,
-            action: 'createReportCIUDashboard',
+            action: 'createSummaryReport',
             filter_id_value: this.filterIDValue,
             filter_level: this.filterLevel
           };
@@ -171,7 +134,7 @@ export default {
           const reportRequest = {
             startDate: this.startDate,
             endDate: this.endDate,
-            action: 'CIUDashboardDownloadData',
+            action: 'SummaryDashboardDownloadData',
             filter_id_value: this.filterIDValue,
             filter_level: this.filterLevel
           };
@@ -236,7 +199,7 @@ export default {
   background-color: #f8f9fa; /* Change this color to your preference */
 }
 .b-button {
-  background-color: #007bff;
+background-color: #007bff;
   color: #fff;
   border: none;
   padding: 0.5rem 1rem;
