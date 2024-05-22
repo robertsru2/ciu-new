@@ -71,13 +71,13 @@ export default {
       divisions: [],
       providers: [],
       providertypes: [],
-      selectedDepartment: '',
+      selectedDepartment: 'ALL',
       selectedDivision: '',
       selectedProvider: '',
       selectedProviderType: '',    // ALL is the defaul value
       startDate: '2023-07-01',
       endDate: new Date().toISOString().substr(0, 10),
-      filterIDValue: 'DOM',
+      filterIDValue: 'ALL',
       filterLevel: 'DepartmentLevel',       // DepartmentLevel, DivisionNM, BillingProviderID
       progress: { current: 0, total: 0, step: 'Report Creation Progress Bar' },
       imageName: '',
@@ -110,7 +110,7 @@ export default {
           this.selectedDivision = '';
           this.selectedProviderType = '';
           this.filterIDValue = this.selectedProvider;
-          this.filterLevel = 'BillingProviderID'; 
+          this.filterLevel = 'ProviderID'; 
         } else if (selected === 'providerType') {
             this.selectedDepartment = '';
             this.selectedDivision = '';
