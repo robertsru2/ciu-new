@@ -88,7 +88,7 @@ export default {
   },
   async created() {
     try {
-      const response = await axios.get('http://localhost:8000/load_files'); // replace with your server's URL
+      const response = await axios.get('http://localhost:8000/dashboard-ciu'); // replace with your server's URL
         this.departments = response.data.departments;
         this.divisions = response.data.divisions;
         this.providers = response.data.providers;

@@ -39,7 +39,7 @@
             <button class="b-button" @click="createReport">Submit</button>
           </div>
           <div class="progress-bar-container">
-            <p>{{ progress.step }}</p>
+            <p :class="{ 'red-text': progress.step === 'API Server Down' }">{{ progress.step }}</p>
             <progress :value="progress.current" :max="progress.total"></progress>
             <p>{{ progress.current }} / {{ progress.total }}</p>
           </div>
@@ -84,11 +84,17 @@ export default {
     }
   },
   async created() {
-    const response = await axios.get('http://localhost:8000/dashboard-ciu');
-    this.departments = response.data.departments;
-    this.divisions = response.data.divisions;
-    this.providers = response.data.providers;
-    this.providertypes = response.data.providertypes;
+    try {
+      const response = await axios.get('http://localhost:8000/dashboard-ciu'); // replace with your server's URL
+        this.departments = response.data.departments;
+        this.divisions = response.data.divisions;
+        this.providers = response.data.providers;
+        this.providertypes = response.data.providertypes;
+        console.log('Server is up');
+      } catch (error) {
+        console.log('Server is down');
+        this.progress.step = 'API Server Down';
+      }
     },
     methods: {
       clearOtherSelections(selected) {
