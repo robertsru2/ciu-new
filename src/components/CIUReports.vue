@@ -7,7 +7,7 @@
     </div>
     <div class="container">
       <div class="report-creation">
-      <input type="date" v-model="startDate" min="2023-07-01" class="date-input">
+      <input type="date" v-model="startDate" min="2023-05-01" class="date-input">
       <input type="date" v-model="endDate" min="2023-07-01" class="date-input">
       <b-button @click="createReports" variant="primary">Create Reports</b-button>
       <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>

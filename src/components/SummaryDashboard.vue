@@ -5,8 +5,10 @@
       <div class="multiselect-container">
         <h2 class="page-heading">{{ pageHeading }}</h2>
         <div class="date-inputs">
-          <label>Start Date: <input type="date" v-model="startDate" min="2023-07-01" class="date-input"></label>
+          <label>Start Date: <input type="date" v-model="startDate" min="2023-05-01" class="date-input"></label>
           <label>End Date: <input type="date" v-model="endDate" min="2023-07-01" class="date-input"></label>
+          <input type="checkbox" id="includePriorYears" v-model="includePriorYears">
+          <label for="includePriorYears">Include Prior Years</label>
         </div>
         <label>Division: 
           <select v-model="selectedDivision" @change="clearOtherSelections('division')">
@@ -25,7 +27,7 @@
             <button class="b-button" @click="createReport">Submit</button>
           </div>
           <div class="progress-bar-container">
-            <p>{{ progress.step }}</p>
+            <p :class="{ 'red-text': progress.step === 'API Server Down' }">{{ progress.step }}</p>
             <progress :value="progress.current" :max="progress.total"></progress>
             <p>{{ progress.current }} / {{ progress.total }}</p>
           </div>
@@ -63,12 +65,19 @@ export default {
       filterLevel: 'DivisionNM',       // DepartmentLevel, DivisionNM, BillingProviderID
       progress: { current: 0, total: 0, step: 'Report Creation Progress Bar' },
       imageName: '',
+      includePriorYears: true,
     }
   },
   async created() {
-    const response = await axios.get('http://localhost:8000/dashboard-ciu');
-    this.divisions = response.data.divisions;
-    this.providertypes = response.data.providertypes;
+    try {
+      const response = await axios.get('http://localhost:8000/load_files'); // replace with your server's URL
+        this.divisions = response.data.divisions;
+        this.providertypes = response.data.providertypes;
+        console.log('Server is up');
+      } catch (error) {
+        console.log('Server is down');
+        this.progress.step = 'API Server Down';
+      }
     },
     methods: {
       clearOtherSelections(selected) {
@@ -103,7 +112,8 @@ export default {
             endDate: this.endDate,
             action: 'createSummaryReport',
             filter_id_value: this.filterIDValue,
-            filter_level: this.filterLevel
+            filter_level: this.filterLevel,
+            include_prior_years: this.includePriorYears
           };
           this.socket.send(JSON.stringify(reportRequest));
         };
@@ -161,7 +171,7 @@ export default {
 </script>
 
   <!-- ... -->
-  <style scoped>
+<style scoped>
 .logo {
   width: 150px; /* Adjust as needed */
   height: auto; /* This will maintain the aspect ratio */
@@ -273,5 +283,8 @@ background-color: #007bff;
 .page-heading {
   text-align: center;
   margin-bottom: 1rem; /* Add some space below the heading */
+}
+.red-text {
+  color: red;
 }
 </style>

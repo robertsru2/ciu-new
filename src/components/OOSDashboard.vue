@@ -5,7 +5,7 @@
       <div class="multiselect-container">
         <h2 class="page-heading">{{ pageHeading }}</h2>
         <div class="date-inputs">
-          <label>Start Date: <input type="date" v-model="startDate" min="2023-07-01" class="date-input"></label>
+          <label>Start Date: <input type="date" v-model="startDate" min="2023-05-01" class="date-input"></label>
           <label>End Date: <input type="date" v-model="endDate" min="2023-07-01" class="date-input"></label>
         </div>
         <label>Department: 
@@ -197,8 +197,8 @@ export default {
   }
 </script>
 
-  <!-- ... -->
-  <style scoped>
+
+<style scoped>
 .logo {
   width: 150px; /* Adjust as needed */
   height: auto; /* This will maintain the aspect ratio */
@@ -310,5 +310,8 @@ export default {
 .page-heading {
   text-align: center;
   margin-bottom: 1rem; /* Add some space below the heading */
+}
+.red-text {
+  color: red;
 }
 </style>
