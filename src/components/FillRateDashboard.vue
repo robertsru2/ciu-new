@@ -93,7 +93,7 @@ export default {
   async created() {
     try {
       const response = await axios.get('http://localhost:8000/dashboard-ciu'); // replace with your server's URL
-        this.departments = response.data.departments;
+        this.departments = response.data.departments.filter(department => department.DepartmentLevel !== "ALL");
         this.divisions = response.data.divisions;
         this.providers = response.data.providers;
         this.providertypes = response.data.providertypes;

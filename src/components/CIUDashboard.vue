@@ -226,8 +226,8 @@ export default {
 }
 
 .multiselect-container, .progress-container2 {
-  max-height: 50vh;
-  max-width: 50vw;
+  max-height: 70vh;
+  max-width: 70vw;
   overflow: auto;
   border: 1px solid #ced4da;
   border-radius: 0.25rem;
