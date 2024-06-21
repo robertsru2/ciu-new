@@ -1,7 +1,7 @@
 <template>
   <div class="home">
     <img alt="National Jewish Health" src="../assets/NJ_Logo.png">
-    <HelloWorld msg="Welcome to the Clinical Information Reports App"/>
+    <HelloWorld msg="Welcome to the Department of Medicine Dashboard Applicaiton"/>
   </div>
 </template>
 
