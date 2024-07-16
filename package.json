@@ -11,7 +11,7 @@
     "axios": "^1.6.8",
     "bootstrap": "^5.3.3",
     "bootstrap-vue": "^2.23.1",
-    "bootstrap-vue-3": "^0.5.1",
+    "bootstrap-vue-3": "^0.3.12",
     "core-js": "^3.8.3",
     "vue": "^3.2.13",
     "vue-multiselect": "^3.0.0-beta.3",
@@ -24,7 +24,7 @@
     "@vue/cli-plugin-babel": "~5.0.0",
     "@vue/cli-plugin-eslint": "~5.0.0",
     "@vue/cli-plugin-router": "~5.0.0",
-    "@vue/cli-service": "~5.0.0",
+    "@vue/cli-service": "^5.0.8",
     "eslint": "^7.32.0",
     "eslint-plugin-vue": "^8.0.3"
   },
