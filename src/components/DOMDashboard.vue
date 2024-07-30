@@ -11,7 +11,9 @@
         <div> <router-link :to="{ name: 'FillRateDashboard' }">Fill Rate Dashboard</router-link> </div>
         <div> <router-link :to="{ name: 'ClinicFillDashboard' }">2-Week Clinic Fill Dashboard</router-link> </div>         
         <div> <router-link :to="{ name: 'OOSDashboard' }">Out of State Dashboard</router-link> </div>
-        <div> <router-link :to="{ name: 'ProviderTimeReport' }">Provider Time Report</router-link> </div> 
+        <div> <router-link :to="{ name: 'APPTimeReport' }">APP Time Dashboard</router-link> </div> 
+        <div> <router-link :to="{ name: 'BudgetToActual' }">Budget to Actual Dashboard</router-link></div>
+        <div> <router-link :to="{ name: 'NeuroPsychHours' }">Neuro Psychology Hours</router-link></div>
       </div>
     </div>
   </div> 
@@ -19,10 +21,11 @@
 
 <script>
 
+
 export default {
   data() {
       return {
-        pageHeading: 'Dashboard',
+        pageHeading: 'Key Performance Indicators Dashboard Home',
       }
   }
 }
