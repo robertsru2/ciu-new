@@ -47,7 +47,7 @@ import axios from 'axios';
 export default {
   data() {
     return {
-      pageHeading: 'NeuroPsych Dashboard',
+      pageHeading: 'Neuro Psychology Dashboard',
       providers: [],
       divisions: [],
       selectedDivision: 'Neurology',
