@@ -11,6 +11,7 @@ import SummaryDashboard from '@/components/SummaryDashboard.vue'
 import OOSDashboard from '@/components/OOSDashboard.vue'
 import BudgetToActual from '@/components/BudgetToActual.vue'
 import NeuroPsychHours from '@/components/NeuroPsychHours.vue'
+import BlockReport from '@/components/BlockReport.vue'
 
 const routes = [
   { path: '/dom-dashboard', name: 'DOMDashboard', component: DOMDashboard },
@@ -25,6 +26,7 @@ const routes = [
   { path: '/oos-dashboard', name: 'OOSDashboard', component: OOSDashboard },
   { path: '/budget-to-actual', name: 'BudgetToActual', component: BudgetToActual },
   { path: '/neuropsych-hours', name: 'NeuroPsychHours', component: NeuroPsychHours },
+  { path: '/get_block_data', name: 'BlockReport', component: BlockReport },
   { path: '/', redirect: '/home' }  
   // other routes... 
 ]
