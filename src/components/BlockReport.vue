@@ -58,8 +58,10 @@
       <p>Filter Level: {{ filterLevel }}</p>
     </div>
     <div>
+      <label>Results 
       <!-- Other template content -->
-    <div v-html="htmlResponse"></div> <!-- Render the HTML content -->
+      <div ref="htmlContainer" v-html="htmlResponse"></div> <!-- Render the HTML content -->
+      </label> 
   </div>
   </div>
 </template>
@@ -71,7 +73,7 @@ export default {
   data() {
     return {
       htmlResponse: '', // Add a data property to store the HTML content
-      pageHeading: 'Advanced Practice Provider Block Time Report',
+      pageHeading: 'Provider Block Time Report',
       departments: [],
       divisions: [],
       providers: [],
@@ -83,7 +85,7 @@ export default {
       startDate: '2024-01-01',
       endDate: new Date().toISOString().substr(0, 10),
       filterIDValue: '4182264',
-      filterLevel: 'ProviderID',       // DepartmentLevel, DivisionNM, BillingProviderID
+      filterLevel: 'ProviderID',       // DepartmentLevel, DivisionNM, ProviderID
       progress: { current: 0, total: 0, step: 'Report Creation Progress Bar' },
       imageName: '',
       includePriorYears: true,
@@ -115,7 +117,15 @@ export default {
       }
     },
     methods: {
- 
+      loadExternalScript(src) {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    },
       clearOtherSelections(selected) {
         if (selected === 'department') {
           this.selectedDivision = '';
@@ -135,7 +145,7 @@ export default {
           this.selectedDivision = '';
           this.selectedProviderType = '';
           this.filterIDValue = this.selectedProvider;
-          this.filterLevel = 'BillingProviderID'; 
+          this.filterLevel = 'ProviderID'; 
         } else if (selected === 'providerType') {
             this.selectedDepartment = '';
             this.selectedDivision = '';
@@ -161,16 +171,70 @@ export default {
             filter_level: this.filterLevel,
             include_prior_years: this.includePriorYears
           };
-          const response = await axios.post('http://localhost:8000/get_block_data/', { params: reportRequest });
-          // Handle the response data as needed
-          console.log(response.data);
-          this.htmlResponse = response.data;
-          this.progress.step = 'Report Created Successfully';
-        } catch (error) {
-          console.error('Failed to create report:', error);
-          this.progress.step = 'Failed to Create Report';
+          const response = await axios.post('http://localhost:8000/get_block_data/', reportRequest);
+        // Log the entire response object
+        // Log the entire response object
+        console.log('Response Data:', response.data);
+
+        // Check if response.data is null or does not contain the html property
+        if (!response.data) {
+          throw new Error('Invalid response structure');
         }
-      },
+
+        // Insert the HTML content into the DOM
+        this.htmlResponse = response.data; // response.data contains the HTML content
+        console.log('HTML Response:', this.htmlResponse);
+
+        this.$nextTick(() => {
+          // Inject the CSS
+          const cssLink = document.createElement('link');
+          cssLink.rel = 'stylesheet';
+          cssLink.href = 'https://www.unpkg.com/dt_for_itables@2.0.11/dt_bundle.css';
+          document.head.appendChild(cssLink);
+
+          // Extract the dynamic ID from the HTML response
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(this.htmlResponse, 'text/html');
+          const tableElement = doc.querySelector('table');
+          const dynamicId = tableElement ? tableElement.id : null;
+
+          if (!dynamicId) {
+            throw new Error('Failed to extract dynamic ID from the HTML response');
+          }
+
+          // Extract the data from the response
+          const tableData = JSON.parse(tableElement.getAttribute('data-table-data'));
+
+          // Convert the data to a format that can be used in the script
+          const data = tableData.map((item, index) => [
+            index,
+            item.ProviderID,
+            item.ProviderNM,
+            item.UnavailableReasonDSC,
+            item.SlotBeginDTS,
+            item.Blocked_Time
+          ]);
+
+          // Inject the JavaScript module
+          const script = document.createElement('script');
+          script.type = 'module';
+          script.textContent = `
+            import {DataTable, jQuery as $} from 'https://www.unpkg.com/dt_for_itables@2.0.11/dt_bundle.js';
+            document.querySelectorAll("#${dynamicId}:not(.dataTable)").forEach(table => {
+              const data = ${JSON.stringify(data)};
+              let dt_args = {"layout": {"topStart": "pageLength", "topEnd": "search", "bottomStart": "info", "bottomEnd": "paging"}, "order": []};
+              dt_args["data"] = data;
+              new DataTable(table, dt_args);
+            });
+          `;
+          document.body.appendChild(script);
+        });
+        this.progress.step = 'Report Created Successfully';
+        } catch (error) {
+            console.error('Failed to create report:', error);
+            this.progress.step = 'Failed to Create Report';
+        }
+        },
       async downloadData() {
         try {
           console.log('downloadData method called')
@@ -325,3 +389,20 @@ export default {
   color: red;
 }
 </style>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Other head elements -->
+  <link href="https://www.unpkg.com/dt_for_itables@2.0.11/dt_bundle.css" rel="stylesheet">
+</head>
+<body>
+  <div id="app"></div>
+  <!-- Other scripts -->
+  <script type="module">
+    import {DataTable, jQuery as $} from 'https://www.unpkg.com/dt_for_itables@2.0.11/dt_bundle.js';
+    window.DataTable = DataTable;
+    window.$ = $;
+  </script>
+</body>
+</html>
