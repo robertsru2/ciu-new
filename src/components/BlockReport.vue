@@ -209,10 +209,10 @@ export default {
           const data = tableData.map((item, index) => [
             index,
             item.ProviderID,
-            item.ProviderNM,
-            item.UnavailableReasonDSC,
-            item.SlotBeginDTS,
-            item.Blocked_Time
+            item.ProviderName,
+            item.UnavailableReasonDescription,
+            item.BlockDate,
+            item.BlockedHours
           ]);
 
           // Inject the JavaScript module
