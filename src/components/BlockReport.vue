@@ -83,8 +83,12 @@ export default {
       selectedProvider: '',
       selectedProviderType: '',    // ALL is the defaul value
       startDate: '2024-01-01',
-      endDate: new Date().toISOString().substr(0, 10),
-      filterIDValue: '4182264',
+      endDate: (() => {
+        const date = new Date();
+        date.setMonth(date.getMonth() + 6);
+        return date.toISOString().substr(0, 10);
+      })(),
+      filterIDValue: '',
       filterLevel: 'ProviderID',       // DepartmentLevel, DivisionNM, ProviderID
       progress: { current: 0, total: 0, step: 'Report Creation Progress Bar' },
       imageName: '',
@@ -212,7 +216,8 @@ export default {
             item.ProviderName,
             item.UnavailableReasonDescription,
             item.BlockDate,
-            item.BlockedHours
+            item.BlockedHours,
+            item.PayrollBlockedHours
           ]);
 
           // Inject the JavaScript module
