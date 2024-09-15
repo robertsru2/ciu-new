@@ -5,8 +5,8 @@
       <div class="multiselect-container">
         <h2 class="page-heading">{{ pageHeading }}</h2>
         <div class="date-inputs">
-          <label>Start Date: <input type="date" v-model="startDate" min="2023-07-01" class="date-input"></label>
-          <label>End Date: <input type="date" v-model="endDate" min="2023-07-01" class="date-input"></label>
+          <label>Start Date: <input type="date" v-model="startDate" min="2023-05-01" class="date-input"></label>
+          <label>End Date: <input type="date" v-model="endDate" min="2023-05-01" class="date-input"></label>
             <input type="checkbox" id="includePriorYears" v-model="includePriorYears">
             <label for="includePriorYears">Include Prior Years</label>
         </div>
@@ -78,11 +78,11 @@ export default {
       divisions: [],
       providers: [],
       providertypes: [],
-      selectedDepartment: '',
+      selectedDepartment: 'DOM',
       selectedDivision: '',
       selectedProvider: '',
-      selectedProviderType: '',    // ALL is the defaul value
-      startDate: '2024-01-01',
+      selectedProviderType: 'ALL',    // ALL is the defaul value
+      startDate: new Date(new Date().getFullYear(), 0, 1).toISOString().substr(0, 10),
       endDate: (() => {
         const date = new Date();
         date.setMonth(date.getMonth() + 6);
@@ -134,30 +134,38 @@ export default {
         if (selected === 'department') {
           this.selectedDivision = '';
           this.selectedProvider = '';
-          this.selectedProviderType = '';
-          this.filterIDValue = this.selectedDepartment    //+ '|' + this.selectedProviderType;
-          this.filterLevel = 'DepartmentLevel'           // 'DepartmentLevel|ProviderType';
+          //this.selectedProviderType = '';
+          this.filterIDValue = this.selectedDepartment + (this.selectedProviderType !== 'ALL' ? '|' + this.selectedProviderType : '');
+          this.filterLevel = 'DepartmentLevel' + (this.selectedProviderType !== 'ALL' ? '|' + 'ProviderCategory' : '');          
         } else if (selected === 'division') {
           this.selectedDepartment = '';
           this.selectedProvider = '';
-          this.selectedProviderType = '';
-          this.filterIDValue = this.selectedDivision    // + '|' + this.selectedProviderType;
-          this.filterLevel = 'DivisionNM'       // |ProviderType';
+          //this.selectedProviderType = '';
+          this.filterIDValue = this.selectedDivision  + (this.selectedProviderType !== 'ALL' ? '|' + this.selectedProviderType : '')
+          this.filterLevel = 'DivisionNM' + (this.selectedProviderType !== 'ALL' ? '|' + 'ProviderCategory' : '')
         } else if (selected === 'provider') {
           this.selectedProviderType = '';
           this.selectedDepartment = ''; 
           this.selectedDivision = '';
           this.selectedProviderType = '';
           this.filterIDValue = this.selectedProvider;
-          this.filterLevel = 'ProviderID'; 
+          this.filterLevel = 'BillingProviderID'; 
         } else if (selected === 'providerType') {
-            this.selectedDepartment = '';
-            this.selectedDivision = '';
             this.selectedProvider = '';
-            this.filterIDValue = this.selectedProviderType  //+ '|' + this.selectedDivision;
-            this.filterLevel = 'ProviderCategory'     //|DivisionNM'; 
+            if (this.selectedDepartment !== '') {
+              this.filterIDValue =  this.selectedDepartment + '|' + this.selectedProviderType ;
+              this.filterLevel = 'DepartmentLevel' + '|' + 'ProviderCategory'; 
+            }
+            else if (this.selectedDivision !== '') {
+              this.filterIDValue =  this.selectedDivision + '|' + this.selectedProviderType ;
+              this.filterLevel = 'DivisionNM' + '|' + 'ProviderCategory'; 
+            }
+            else {
+              this.filterIDValue =  'ALL' + '|' + this.selectedProviderType ;
+              this.filterLevel = 'DepartmentLevel' + '|' + 'ProviderCategory'; 
+            }
         }
-        },
+      },
       validateDates() {
         if (this.startDate && this.endDate && this.startDate > this.endDate) {
           this.errorMessage = 'End date must be later than start date.';

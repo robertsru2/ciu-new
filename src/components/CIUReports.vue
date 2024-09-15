@@ -129,7 +129,9 @@
             const reportRequest = {
                 action: 'createReports',
                 startDate: this.startDate,
-                endDate: this.endDate
+                endDate: this.endDate,
+                filter_level: 'BillingProviderID',
+                filter_id_value: '9999999'    // Pass a number in so RVUGraph error parsing doesn't trigger.
             };
             this.socket.send(JSON.stringify(reportRequest));
             };

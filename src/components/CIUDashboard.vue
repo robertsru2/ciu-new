@@ -77,7 +77,7 @@ export default {
       selectedDepartment: '',
       selectedDivision: '',
       selectedProvider: '',
-      selectedProviderType: '',    // ALL is the defaul value
+      selectedProviderType: 'ALL',    // ALL is the defaul value
       startDate: '2023-07-01',
       endDate: new Date().toISOString().substr(0, 10),
       filterIDValue: 'DOM',
@@ -117,15 +117,15 @@ export default {
         if (selected === 'department') {
           this.selectedDivision = '';
           this.selectedProvider = '';
-          this.selectedProviderType = '';
-          this.filterIDValue = this.selectedDepartment    //+ '|' + this.selectedProviderType;
-          this.filterLevel = 'DepartmentLevel'           // 'DepartmentLevel|ProviderType';
+          //this.selectedProviderType = '';
+          this.filterIDValue = this.selectedDepartment + (this.selectedProviderType !== 'ALL' ? '|' + this.selectedProviderType : '');
+          this.filterLevel = 'DepartmentLevel' + (this.selectedProviderType !== 'ALL' ? '|' + 'ProviderCategory' : '');          
         } else if (selected === 'division') {
           this.selectedDepartment = '';
           this.selectedProvider = '';
-          this.selectedProviderType = '';
-          this.filterIDValue = this.selectedDivision    // + '|' + this.selectedProviderType;
-          this.filterLevel = 'DivisionNM'       // |ProviderType';
+          //this.selectedProviderType = '';
+          this.filterIDValue = this.selectedDivision  + (this.selectedProviderType !== 'ALL' ? '|' + this.selectedProviderType : '')
+          this.filterLevel = 'DivisionNM' + (this.selectedProviderType !== 'ALL' ? '|' + 'ProviderCategory' : '')
         } else if (selected === 'provider') {
           this.selectedProviderType = '';
           this.selectedDepartment = ''; 
@@ -134,13 +134,21 @@ export default {
           this.filterIDValue = this.selectedProvider;
           this.filterLevel = 'BillingProviderID'; 
         } else if (selected === 'providerType') {
-            this.selectedDepartment = '';
-            this.selectedDivision = '';
             this.selectedProvider = '';
-            this.filterIDValue = this.selectedProviderType  //+ '|' + this.selectedDivision;
-            this.filterLevel = 'ProviderCategory'     //|DivisionNM'; 
+            if (this.selectedDepartment !== '') {
+              this.filterIDValue =  this.selectedDepartment + '|' + this.selectedProviderType ;
+              this.filterLevel = 'DepartmentLevel' + '|' + 'ProviderCategory'; 
+            }
+            else if (this.selectedDivision !== '') {
+              this.filterIDValue =  this.selectedDivision + '|' + this.selectedProviderType ;
+              this.filterLevel = 'DivisionNM' + '|' + 'ProviderCategory'; 
+            }
+            else {
+              this.filterIDValue =  'ALL' + '|' + this.selectedProviderType ;
+              this.filterLevel = 'DepartmentLevel' + '|' + 'ProviderCategory'; 
+            }
         }
-        },
+      },
       validateDates() {
         if (this.startDate && this.endDate && this.startDate > this.endDate) {
           this.errorMessage = 'End date must be later than start date.';

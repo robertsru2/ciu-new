@@ -31,7 +31,8 @@
         <label>ProviderType: 
           <select v-model="selectedProviderType" @change="clearOtherSelections('providerType')">
             <option disabled value="">Select Provider Type</option>
-            <option v-for="providerType in providertypes" :key="providerType.DoctorDegreeNM" :value="providerType.DoctorDegreeNM">{{ providerType.DoctorDegreeNM }}</option>
+            <!--<option v-for="providerType in providertypes" :key="providerType.DoctorDegreeNM" :value="providerType.DoctorDegreeNM">{{ providerType.DoctorDegreeNM }}</option> -->
+            <option v-for="(doctorDegrees, category) in uniqueCategories" :key="category" :value="category">{{ category }}</option>
           </select>  
         </label>      
         <div class="button-progress-container">
@@ -71,10 +72,10 @@ export default {
       divisions: [],
       providers: [],
       providertypes: [],
-      selectedDepartment: 'ALL',
+      selectedDepartment: '',
       selectedDivision: '',
       selectedProvider: '',
-      selectedProviderType: '',    // ALL is the defaul value
+      selectedProviderType: 'ALL',    // ALL is the defaul value
       startDate: '2023-07-01',
       endDate: new Date().toISOString().substr(0, 10),
       filterIDValue: 'ALL',
@@ -83,6 +84,18 @@ export default {
       imageName: '',
     }
   },
+     computed: {
+      uniqueCategories() {
+      const categories = {};
+      this.providertypes.forEach(pt => {
+        if (!categories[pt.ProviderCategory]) {
+          categories[pt.ProviderCategory] = [];
+        }
+        categories[pt.ProviderCategory].push(pt.DoctorDegreeNM);
+      });
+      return categories;
+    }
+  },  
   async created() {
     try {
       const response = await axios.get('http://localhost:8000/dashboard-ciu'); // replace with your server's URL
@@ -101,30 +114,38 @@ export default {
         if (selected === 'department') {
           this.selectedDivision = '';
           this.selectedProvider = '';
-          this.selectedProviderType = '';
-          this.filterIDValue = this.selectedDepartment    //+ '|' + this.selectedProviderType;
-          this.filterLevel = 'DepartmentLevel'           // 'DepartmentLevel|ProviderType';
+          //this.selectedProviderType = '';
+          this.filterIDValue = this.selectedDepartment + (this.selectedProviderType !== 'ALL' ? '|' + this.selectedProviderType : '');
+          this.filterLevel = 'DepartmentLevel' + (this.selectedProviderType !== 'ALL' ? '|' + 'ProviderCategory' : '');          
         } else if (selected === 'division') {
           this.selectedDepartment = '';
           this.selectedProvider = '';
-          this.selectedProviderType = '';
-          this.filterIDValue = this.selectedDivision    // + '|' + this.selectedProviderType;
-          this.filterLevel = 'DivisionNM'       // |ProviderType';
+          //this.selectedProviderType = '';
+          this.filterIDValue = this.selectedDivision  + (this.selectedProviderType !== 'ALL' ? '|' + this.selectedProviderType : '')
+          this.filterLevel = 'DivisionNM' + (this.selectedProviderType !== 'ALL' ? '|' + 'ProviderCategory' : '')
         } else if (selected === 'provider') {
           this.selectedProviderType = '';
           this.selectedDepartment = ''; 
           this.selectedDivision = '';
           this.selectedProviderType = '';
           this.filterIDValue = this.selectedProvider;
-          this.filterLevel = 'ProviderID'; 
+          this.filterLevel = 'BillingProviderID'; 
         } else if (selected === 'providerType') {
-            this.selectedDepartment = '';
-            this.selectedDivision = '';
             this.selectedProvider = '';
-            this.filterIDValue = this.selectedProviderType  //+ '|' + this.selectedDivision;
-            this.filterLevel = 'DoctorDegreeNM'     //|DivisionNM'; 
+            if (this.selectedDepartment !== '') {
+              this.filterIDValue =  this.selectedDepartment + '|' + this.selectedProviderType ;
+              this.filterLevel = 'DepartmentLevel' + '|' + 'ProviderCategory'; 
+            }
+            else if (this.selectedDivision !== '') {
+              this.filterIDValue =  this.selectedDivision + '|' + this.selectedProviderType ;
+              this.filterLevel = 'DivisionNM' + '|' + 'ProviderCategory'; 
+            }
+            else {
+              this.filterIDValue =  'ALL' + '|' + this.selectedProviderType ;
+              this.filterLevel = 'DepartmentLevel' + '|' + 'ProviderCategory'; 
+            }
         }
-        },
+      },
       validateDates() {
         if (this.startDate && this.endDate && this.startDate > this.endDate) {
           this.errorMessage = 'End date must be later than start date.';

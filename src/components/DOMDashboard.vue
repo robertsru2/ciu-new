@@ -15,6 +15,7 @@
         <div> <router-link :to="{ name: 'BudgetToActual' }">Budget to Actual Dashboard</router-link></div>
         <div> <router-link :to="{ name: 'NeuroPsychHours' }">Neuro Psychology Hours</router-link></div>
         <div> <router-link :to="{ name: 'BlockReport' }">Provider Block Time Report</router-link></div>
+        <div> <router-link :to="{ name: 'DOWVisitsDashboard' }">Day of Week Dashboard</router-link></div>
       </div>
     </div>
   </div> 
