@@ -43,8 +43,11 @@
       <p>Filter ID Value: {{ filterIDValue }}</p>
       <p>Filter Level: {{ filterLevel }}</p>
     </div>
-    <div class="image-container">
-      <img :src="imageName" alt="Report Image" class="outlined-image">
+    <div class="container">
+        <!-- Other template content -->
+        <div class="image-container">
+          <img v-for="imageName in imageNames" :src="imageName" :key="imageName" alt="Summary Report Image" class="outlined-image">
+        </div>
     </div>
   </div>
 </template>
@@ -65,7 +68,7 @@ export default {
       filterIDValue: 'AllergyImmunology',
       filterLevel: 'DivisionNM',       // DepartmentLevel, DivisionNM, BillingProviderID
       progress: { current: 0, total: 0, step: 'Report Creation Progress Bar' },
-      imageName: '',
+      imageNames: [], // Change to an array to store multiple image URLs
       includePriorYears: true,
     }
   },
@@ -121,7 +124,52 @@ export default {
           this.createReport();
         }
       },
-      createReport() {
+    setupSocket() {
+      if (!this.socket) {
+        console.error('WebSocket is not initialized');
+        return;
+      }
+      this.socket.onmessage = async (event) => {
+        const data = JSON.parse(event.data);
+        console.group("ReceivedData");
+        console.log(data);
+        console.groupEnd
+
+        // Check if the received data contains an 'img_names' property
+        if (data.img_names && Array.isArray(data.img_names)) {
+          try {
+            console.group("GetImages");
+            console.log('Calling http://localhost:8000/dashboard-get-images/');
+            const response = await fetch(`http://localhost:8000/dashboard-get-images/?${data.img_names.map(img_name => `img_names=${encodeURIComponent(img_name)}`).join('&')}`);
+            if (!response.ok) {
+              throw new Error('Network response was not ok');
+            }
+            console.groupEnd();
+            const imageUrls = await response.json();
+            console.group("ReceivedImages");
+            console.log('Fetched image URLs:', imageUrls); // Log the fetched image URLs
+            this.imageNames = imageUrls.map(url => {
+            const fullUrl = `http://localhost:8000${url}?t=${new Date().getTime()}`;
+            console.log(fullUrl); // Log the URL to verify
+            console.groupEnd();
+            return fullUrl;
+            });
+          } catch (error) {
+            console.error('Error fetching images:', error);
+          }
+        } else {
+          this.progress = data;
+        }
+      };
+        this.socket.onerror = (event) => {
+        console.error('WebSocket error:', event);
+      };
+
+        this.socket.onclose = () => {
+        console.log('WebSocket connection closed');
+      };
+    },
+    createReport() {
         if (this.socket) {
           this.socket.close();
         }
@@ -139,18 +187,19 @@ export default {
           };
           this.socket.send(JSON.stringify(reportRequest));
         };
+        this.setupSocket();
 
-        this.socket.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          console.log(data)
-          // Check if the received data contains an 'img_name' property
-          if (data.img_name) {
-            const timestamp = new Date().getTime(); // Get the current timestamp
-            this.imageName = `http://localhost:8000/dashboard-get-image/${data.img_name}?t=${timestamp}`;
-          } else {
-            this.progress = data;
-          }
-        };
+        // this.socket.onmessage = (event) => {
+        //   const data = JSON.parse(event.data);
+        //   console.log(data)
+        //   // Check if the received data contains an 'img_name' property
+        //   if (data.img_name) {
+        //     const timestamp = new Date().getTime(); // Get the current timestamp
+        //     this.imageName = `http://localhost:8000/dashboard-get-image/${data.img_name}?t=${timestamp}`;
+        //   } else {
+        //     this.progress = data;
+        //   }
+        // };
 
         this.socket.onerror = (event) => {
           console.error('WebSocket error:', event);
@@ -188,6 +237,9 @@ export default {
           console.error('Failed to download data:', error);
         }
       },
+    },
+    mounted() {
+      this.setupSocket();
     },
   }
 </script>
@@ -267,6 +319,9 @@ background-color: #007bff;
 }
 
 .image-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   width: 100%;
   overflow: auto;
 }
