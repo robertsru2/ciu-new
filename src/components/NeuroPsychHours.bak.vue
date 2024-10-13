@@ -35,20 +35,10 @@
           <!-- Add a button that triggers the download when clicked -->
               <button class="b-button" @click="downloadData">Download Data</button>      
           </div>
-        </div>
+       </div>
       </div>
     </div>
-    <div class="selection-string">
-      <p>Filter ID Value: {{ filterIDValue }}</p>
-      <p>Filter Level: {{ filterLevel }}</p>
-    </div>
-    <div>
-      <label>Results 
-      <!-- Other template content -->
-      <div ref="htmlContainer" v-html="htmlResponse"></div> <!-- Render the HTML content -->
-      </label> 
   </div>
-</div>
 </template>
 
 <script>
@@ -57,17 +47,15 @@ import axios from 'axios';
 export default {
   data() {
     return {
-      htmlResponse: '', // Add a data property to store the HTML content
       pageHeading: 'Neuro Psychology Dashboard',
       providers: [],
-      config: null,    // Stores the config.json data
       divisions: [],
       selectedDivision: 'Neurology',
       selectedProvider: '',
       startDate: '2023-07-01',
       endDate: new Date().toISOString().substr(0, 10),
-      filterIDValue: 'Neurology', 
-      filterLevel: 'DivisionNM',  
+      filterIDValue: 'Neurology', // DepartmentID, DivisionNM, BillingProviderID
+      filterLevel: 'DivisionNM',       // DepartmentLevel, DivisionNM, BillingProviderID
       progress: { current: 0, total: 0, step: 'Report Creation Progress Bar' },
       imageName: '',
       includePriorYears: true,
@@ -77,12 +65,10 @@ export default {
     filteredDivisions() {
       return this.divisions.filter(division => division.DivisionNM === 'Neurology');
     },
- 
-  },
-  async mounted() {
-    await this.fetchConfig();
-    // Assuming you have a method to fetch providers
-    // await this.fetchProviders();
+    filteredProviders() {
+      const allowedProviderIDs = ['4230633', '4230722', '4189727'];
+      return this.providers.filter(provider => allowedProviderIDs.includes(provider.ProviderID));
+    }    
   },
   async created() {
     try {
@@ -96,15 +82,6 @@ export default {
       }
     },
     methods: {
-      loadExternalScript(src) {
-      return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = src;
-        script.onload = resolve;
-        script.onerror = reject;
-        document.head.appendChild(script);
-      });
-    },
       clearOtherSelections(selected) {
         if (selected === 'division') {
           this.selectedDepartment = '';
@@ -120,7 +97,7 @@ export default {
           this.filterIDValue = this.selectedProvider;
           this.filterLevel = 'BillingProviderID'; 
         }
-     },
+        },
       validateDates() {
         if (this.startDate && this.endDate && this.startDate > this.endDate) {
           this.errorMessage = 'End date must be later than start date.';
@@ -129,94 +106,52 @@ export default {
           this.createReport();
         }
       },
-      async createReport() {
-        try {
+      createReport() {
+        if (this.socket) {
+          this.socket.close();
+        }
+
+        this.socket = new WebSocket('ws://localhost:8000/neuro-psych-dashboard');
+
+        this.socket.onopen = () => {
           const reportRequest = {
             startDate: this.startDate,
             endDate: this.endDate,
+            action: 'createReportNeuroPsychDashboard',
             filter_id_value: this.filterIDValue,
             filter_level: this.filterLevel,
             include_prior_years: this.includePriorYears
           };
-          const response = await axios.post('http://localhost:8000/neuro-psych-dashboard/', reportRequest);
-        console.log('Response Data:', response.data);
+          this.socket.send(JSON.stringify(reportRequest));
+        };
 
-        // Check if response.data is null or does not contain the html property
-        if (!response.data) {
-          throw new Error('Invalid response structure');
-        }
-
-        // Insert the HTML content into the DOM
-        this.htmlResponse = response.data; // response.data contains the HTML content
-        console.log('HTML Response:', this.htmlResponse);
-
-        this.$nextTick(() => {
-          // Inject the CSS
-          const cssLink = document.createElement('link');
-          cssLink.rel = 'stylesheet';
-          cssLink.href = 'https://www.unpkg.com/dt_for_itables@2.0.11/dt_bundle.css';
-          document.head.appendChild(cssLink);
-
-          // Extract the dynamic ID from the HTML response
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(this.htmlResponse, 'text/html');
-          const tableElement = doc.querySelector('table');
-          const dynamicId = tableElement ? tableElement.id : null;
-
-          if (!dynamicId) {
-            console.log('Failed to extract dynamic ID from the HTML response');
-            throw new Error('Failed to extract dynamic ID from the HTML response');
+        this.socket.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          console.log(data)
+          // Check if the received data contains an 'img_name' property
+          if (data.img_name) {
+            const timestamp = new Date().getTime(); // Get the current timestamp
+            this.imageName = `http://localhost:8000/dashboard-get-image/${data.img_name}?t=${timestamp}`;
+          } else {
+            this.progress = data;
           }
+        };
 
-          // Extract the data from the response
-          const tableData = JSON.parse(tableElement.getAttribute('data-table-data'));
+        this.socket.onerror = (event) => {
+          console.error('WebSocket error:', event);
+        };
 
-          // Convert the data to a format that can be used in the script
-          const data = tableData.map((item, index) => [
-            index,
-            item.ProviderID,
-            item.ProviderNM,
-            item.DepartmentNM,
-            item.Year,
-            item.Quarter,
-            item.Month,
-            item.GrossBillings,
-            item.HistoricRVUs,
-            item.Patients_Seen,
-            item.Follow_Ups,
-            item.News,
-            item.News_Hours,
-            item.Followup_Hours,
-            item.Extended_Patient_Visits
-          ]);
-          console.log(data);
-          // Inject the JavaScript module
-          const script = document.createElement('script');
-          script.type = 'module';
-          script.textContent = `
-            import {DataTable, jQuery as $} from 'https://www.unpkg.com/dt_for_itables@2.0.11/dt_bundle.js';
-            document.querySelectorAll("#${dynamicId}:not(.dataTable)").forEach(table => {
-              const data = ${JSON.stringify(data)};
-              let dt_args = {"layout": {"topStart": "pageLength", "topEnd": "search", "bottomStart": "info", "bottomEnd": "paging"}, "order": []};
-              dt_args["data"] = data;
-              new DataTable(table, dt_args);
-            });
-          `;
-          document.body.appendChild(script);
-        });
-        this.progress.step = 'Report Created Successfully';
-        } catch (error) {
-            console.error('Failed to create report:', error);
-            this.progress.step = 'Failed to Create Report';
-        }
-        },
+        this.socket.onclose = () => {
+          console.log('WebSocket connection closed');
+        };
+      },
       async downloadData() {
         try {
           console.log('downloadData method called')
           const reportRequest = {
             startDate: this.startDate,
             endDate: this.endDate,
-            action: 'NeuroPsychReportDownloadData',
+            action: 'NeuroPsychDashboardDownloadData',
             filter_id_value: this.filterIDValue,
             filter_level: this.filterLevel
           };
@@ -230,7 +165,7 @@ export default {
           // Create a link element and programmatically click it to start the download
           const link = document.createElement('a');
           link.href = url;
-          link.setAttribute('download', 'neuro_psych_data.xlsx'); // Choose a suitable filename and extension
+          link.setAttribute('download', 'data.csv'); // Choose a suitable filename and extension
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
@@ -238,22 +173,8 @@ export default {
           console.error('Failed to download data:', error);
         }
       },
-      async fetchConfig() {
-        try {
-            const response = await axios.get('/path/to/config.json');
-            this.config = response.data;
-        } catch (error) {
-            console.error('Failed to load config:', error);
-        }
-      },
-      filteredProviders() {
-      if (!this.config) {
-        return [];
-      }
-      const allowedProviderIDs = this.config.neuro_psych_providr_ids;
-      return this.providers.filter(provider => allowedProviderIDs.includes(provider.ProviderID));
-    }      
     },
+    
   }
 </script>
 
@@ -379,20 +300,3 @@ export default {
   color: red;
 }
 </style>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <!-- Other head elements -->
-  <link href="https://www.unpkg.com/dt_for_itables@2.0.11/dt_bundle.css" rel="stylesheet">
-</head>
-<body>
-  <div id="app"></div>
-  <!-- Other scripts -->
-  <script type="module">
-    import {DataTable, jQuery as $} from 'https://www.unpkg.com/dt_for_itables@2.0.11/dt_bundle.js';
-    window.DataTable = DataTable;
-    window.$ = $;
-  </script>
-</body>
-</html>

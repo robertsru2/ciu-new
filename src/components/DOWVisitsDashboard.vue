@@ -119,39 +119,34 @@ export default {
     methods: {
         clearOtherSelections(selected) {
         if (selected === 'department') {
-          this.selectedDivision = '';
-          this.selectedProvider = '';
-          //this.selectedProviderType = '';
-          this.filterIDValue = this.selectedDepartment + (this.selectedProviderType !== 'ALL' ? '|' + this.selectedProviderType : '');
-          this.filterLevel = 'DepartmentLevel' + (this.selectedProviderType !== 'ALL' ? '|' + 'ProviderCategory' : '');          
-        } else if (selected === 'division') {
-          this.selectedDepartment = '';
-          this.selectedProvider = '';
-          //this.selectedProviderType = '';
-          this.filterIDValue = this.selectedDivision  + (this.selectedProviderType !== 'ALL' ? '|' + this.selectedProviderType : '')
-          this.filterLevel = 'DivisionNM' + (this.selectedProviderType !== 'ALL' ? '|' + 'ProviderCategory' : '')
-        } else if (selected === 'provider') {
-          this.selectedProviderType = '';
-          this.selectedDepartment = ''; 
-          this.selectedDivision = '';
-          this.selectedProviderType = '';
-          this.filterIDValue = this.selectedProvider;
-          this.filterLevel = 'BillingProviderID'; 
-        } else if (selected === 'providerType') {
+            this.selectedDivision = '';
+            this.selectedProvider = '';
+            this.filterIDValue = this.selectedDepartment + (this.selectedProviderType !== 'ALL' ? '|' + this.selectedProviderType : '');
+            this.filterLevel = 'DepartmentLevel' + (this.selectedProviderType !== 'ALL' ? '|' + 'ProviderCategory' : '');          
+          } else if (selected === 'division') {
+            this.selectedDepartment = '';
+            this.selectedProvider = '';
+            this.filterIDValue = this.selectedDivision + (this.selectedProviderType !== 'ALL' ? '|' + this.selectedProviderType : '');
+            this.filterLevel = 'DivisionNM' + (this.selectedProviderType !== 'ALL' ? '|' + 'ProviderCategory' : '');
+          } else if (selected === 'provider') {
+            this.selectedProviderType = '';
+            this.selectedDepartment = ''; 
+            this.selectedDivision = '';
+            this.filterIDValue = this.selectedProvider;
+            this.filterLevel = 'ProviderID'; 
+          } else if (selected === 'providerType') {
             this.selectedProvider = '';
             if (this.selectedDepartment !== '') {
-              this.filterIDValue =  this.selectedDepartment + '|' + this.selectedProviderType ;
+              this.filterIDValue = this.selectedDepartment + '|' + this.selectedProviderType;
               this.filterLevel = 'DepartmentLevel' + '|' + 'ProviderCategory'; 
-            }
-            else if (this.selectedDivision !== '') {
-              this.filterIDValue =  this.selectedDivision + '|' + this.selectedProviderType ;
+            } else if (this.selectedDivision !== '') {
+              this.filterIDValue = this.selectedDivision + '|' + this.selectedProviderType;
               this.filterLevel = 'DivisionNM' + '|' + 'ProviderCategory'; 
-            }
-            else {
-              this.filterIDValue =  'ALL' + '|' + this.selectedProviderType ;
+            } else {
+              this.filterIDValue = 'ALL' + '|' + this.selectedProviderType;
               this.filterLevel = 'DepartmentLevel' + '|' + 'ProviderCategory'; 
             }
-        }
+          }
       },
           validateDates() {
             if (this.startDate && this.endDate && this.startDate > this.endDate) {

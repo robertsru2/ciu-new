@@ -88,8 +88,8 @@ export default {
         date.setMonth(date.getMonth() + 6);
         return date.toISOString().substr(0, 10);
       })(),
-      filterIDValue: '',
-      filterLevel: 'ProviderID',       // DepartmentLevel, DivisionNM, ProviderID
+      filterIDValue: 'DOM',
+      filterLevel: 'DepartmentLevel',       // DepartmentLevel, DivisionNM, ProviderID
       progress: { current: 0, total: 0, step: 'Report Creation Progress Bar' },
       imageName: '',
       includePriorYears: true,
@@ -134,13 +134,11 @@ export default {
         if (selected === 'department') {
           this.selectedDivision = '';
           this.selectedProvider = '';
-          //this.selectedProviderType = '';
           this.filterIDValue = this.selectedDepartment + (this.selectedProviderType !== 'ALL' ? '|' + this.selectedProviderType : '');
           this.filterLevel = 'DepartmentLevel' + (this.selectedProviderType !== 'ALL' ? '|' + 'ProviderCategory' : '');          
         } else if (selected === 'division') {
           this.selectedDepartment = '';
           this.selectedProvider = '';
-          //this.selectedProviderType = '';
           this.filterIDValue = this.selectedDivision  + (this.selectedProviderType !== 'ALL' ? '|' + this.selectedProviderType : '')
           this.filterLevel = 'DivisionNM' + (this.selectedProviderType !== 'ALL' ? '|' + 'ProviderCategory' : '')
         } else if (selected === 'provider') {
@@ -184,13 +182,11 @@ export default {
             include_prior_years: this.includePriorYears
           };
           const response = await axios.post('http://localhost:8000/get_block_data/', reportRequest);
-        // Log the entire response object
-        // Log the entire response object
-        console.log('Response Data:', response.data);
+          console.log('Block Response Data:', response.data);
 
         // Check if response.data is null or does not contain the html property
         if (!response.data) {
-          throw new Error('Invalid response structure');
+          throw new Error('Invalid response structure returned from the server');
         }
 
         // Insert the HTML content into the DOM
@@ -211,6 +207,7 @@ export default {
           const dynamicId = tableElement ? tableElement.id : null;
 
           if (!dynamicId) {
+            console.log('Failed to extract dynamic ID from the HTML response');
             throw new Error('Failed to extract dynamic ID from the HTML response');
           }
 
@@ -254,7 +251,7 @@ export default {
           const reportRequest = {
             startDate: this.startDate,
             endDate: this.endDate,
-            action: 'CIUDashboardDownloadData',
+            action: 'BlockReportDownloadData',
             filter_id_value: this.filterIDValue,
             filter_level: this.filterLevel
           };

@@ -102,11 +102,7 @@ export default {
           this.filterLevel = 'DivisionNM' + (this.selectedProviderType !== 'ALL' ? '|' + 'ProviderCategory' : '')
         } else if (selected === 'providerType') {
             this.selectedProvider = '';
-            if (this.selectedDepartment !== '') {
-              this.filterIDValue =  this.selectedDepartment + '|' + this.selectedProviderType ;
-              this.filterLevel = 'DepartmentLevel' + '|' + 'ProviderCategory'; 
-            }
-            else if (this.selectedDivision !== '') {
+           if (this.selectedDivision !== '') {
               this.filterIDValue =  this.selectedDivision + '|' + this.selectedProviderType ;
               this.filterLevel = 'DivisionNM' + '|' + 'ProviderCategory'; 
             }
