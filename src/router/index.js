@@ -13,6 +13,7 @@ import BudgetToActual from '@/components/BudgetToActual.vue'
 import NeuroPsychHours from '@/components/NeuroPsychHours.vue'
 import BlockReport from '@/components/BlockReport.vue'
 import DOWVisitsDashboard from '@/components/DOWVisitsDashboard.vue'
+import OOSCompesation from '@/components/OOSCompesation.vue'
 
 const routes = [
   { path: '/dom-dashboard', name: 'DOMDashboard', component: DOMDashboard },
@@ -29,6 +30,8 @@ const routes = [
   { path: '/neuropsych-hours', name: 'NeuroPsychHours', component: NeuroPsychHours },
   { path: '/get_block_data', name: 'BlockReport', component: BlockReport },
   { path: '/dow-visits-dashboard', name: 'DOWVisitsDashboard', component: DOWVisitsDashboard },
+  { path: '/oos-compensation', name: 'OOSCompensation', component: OOSCompesation },
+
   { path: '/', redirect: '/home' }  
   // other routes... 
 ]

@@ -6,11 +6,10 @@
         <h2 class="page-heading">{{ pageHeading }}</h2>
         <div class="date-inputs">
           <label>Start Date: <input type="date" v-model="startDate" min="2023-05-01" class="date-input"></label>
-          <label>End Date: <input type="date" v-model="endDate" min="2023-07-01" class="date-input"></label>
-          <input type="checkbox" id="includePriorYears" v-model="includePriorYears">
-          <label for="includePriorYears">Include Prior Years</label>
+          <label>End Date: <input type="date" v-model="endDate" min="2023-05-01" class="date-input"></label>
+            <input type="checkbox" id="includePriorYears" v-model="includePriorYears">
+            <label for="includePriorYears">Include Prior Years</label>
         </div>
-
         <label>Department: 
           <select v-model="selectedDepartment" @change="clearOtherSelections('department')">
             <option disabled value="">Select Department</option>
@@ -36,44 +35,45 @@
             <option disabled value="">Select Provider Type</option>
             <!--<option v-for="providerType in providertypes" :key="providerType.DoctorDegreeNM" :value="providerType.DoctorDegreeNM">{{ providerType.DoctorDegreeNM }}</option> -->
             <option v-for="(doctorDegrees, category) in uniqueCategories" :key="category" :value="category">{{ category }}</option>
-          </select>
-        </label>        
+          </select>  
+        </label>      
         <div class="button-progress-container">
-      <div class="button-container">
-        <button class="b-button" @click="createReport">Submit</button>
+          <div class="button-container">
+            <button class="b-button" @click="createReport">Submit</button>
+          </div>
+          <div class="progress-bar-container">
+            <p :class="{ 'red-text': progress.step === 'API Server Down' }">{{ progress.step }}</p>
+            <progress :value="progress.current" :max="progress.total"></progress>
+            <p>{{ progress.current }} / {{ progress.total }}</p>
+          </div>
+          <div class = "download-button">
+            <!-- Add a button that triggers the download when clicked -->
+            <button class="b-button" @click="downloadData">Download Data</button>      
+          </div>
+        </div>
       </div>
-      <div class="progress-bar-container">
-        <p :class="{ 'red-text': progress.step === 'API Server Down' }">{{ progress.step }}</p>
-        <progress :value="progress.current" :max="progress.total"></progress>
-        <p>{{ progress.current }} / {{ progress.total }}</p>
-      </div>
-      <div class = "download-button">
-      <!-- Add a button that triggers the download when clicked -->
-        <button class="b-button" @click="downloadData">Download Data</button>      
-     </div>
-
     </div>
-  </div>
-
-  </div>
-  </div>
-  <div class="selection-string">
+    <div class="selection-string">
       <p>Filter ID Value: {{ filterIDValue }}</p>
       <p>Filter Level: {{ filterLevel }}</p>
-</div>
-  <div class="image-container">
-    <img :src="imageName" alt="Report Image" class="outlined-image">
+    </div>
+    <div>
+      <label>Results 
+      <!-- Other template content -->
+      <div ref="htmlContainer" v-html="htmlResponse"></div> <!-- Render the HTML content -->
+      </label> 
+  </div>
   </div>
 </template>
+
 <script>
 import axios from 'axios';
 
 export default {
   data() {
-    let now = new Date();
-    let endDate = new Date(now.getFullYear(), now.getMonth(), 0);    
     return {
-      pageHeading: 'Day of Week Visits Dashboard',
+      htmlResponse: '', // Add a data property to store the HTML content
+      pageHeading: 'OOS Provider Compensation Report',
       departments: [],
       divisions: [],
       providers: [],
@@ -81,17 +81,21 @@ export default {
       selectedDepartment: 'DOM',
       selectedDivision: '',
       selectedProvider: '',
-      selectedProviderType: 'ALL',
-      startDate: '2023-07-01',
-      endDate: endDate.toISOString().substr(0, 10), // Use the calculated endDate here
+      selectedProviderType: 'ALL',    // ALL is the defaul value
+      startDate: new Date(new Date().getFullYear(), 0, 1).toISOString().substr(0, 10),
+      endDate: (() => {
+        const date = new Date();
+        date.setMonth(date.getMonth() + 6);
+        return date.toISOString().substr(0, 10);
+      })(),
       filterIDValue: 'DOM',
-      filterLevel: 'DepartmentLevel',       // DepartmentLevel, DivisionNM, BillingProviderID
+      filterLevel: 'DepartmentLevel',       // DepartmentLevel, DivisionNM, ProviderID
       progress: { current: 0, total: 0, step: 'Report Creation Progress Bar' },
       imageName: '',
       includePriorYears: true,
     }
   },
-     computed: {
+   computed: {
       uniqueCategories() {
       const categories = {};
       this.providertypes.forEach(pt => {
@@ -106,7 +110,7 @@ export default {
   async created() {
     try {
       const response = await axios.get('http://localhost:8000/dashboard-ciu'); // replace with your server's URL
-        this.departments = response.data.departments.filter(department => department.DepartmentLevel !== "ALL");
+        this.departments = response.data.departments;
         this.divisions = response.data.divisions;
         this.providers = response.data.providers;
         this.providertypes = response.data.providertypes;
@@ -117,6 +121,15 @@ export default {
       }
     },
     methods: {
+      loadExternalScript(src) {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    },
       clearOtherSelections(selected) {
         if (selected === 'department') {
           this.selectedDivision = '';
@@ -151,66 +164,97 @@ export default {
             }
         }
       },
-          validateDates() {
-            if (this.startDate && this.endDate && this.startDate > this.endDate) {
-              this.errorMessage = 'End date must be later than start date.';
-            } else {
-              this.errorMessage = '';
-              this.createReport();
-            }
-          },
-          createReport() {
-          if (this.socket) {
-              this.socket.close();
-          }
-
-          this.socket = new WebSocket('ws://localhost:8000/dow-visits-dashboard');
-
-          this.socket.onopen = () => {
-          const reportRequest = {
-              startDate: this.startDate,
-              endDate: this.endDate,
-              action: 'createReportFillRate',
-              filter_id_value: this.filterIDValue,
-              filter_level: this.filterLevel,
-              include_prior_years: this.includePriorYears
-          };
-          this.socket.send(JSON.stringify(reportRequest));
-          };
-
-          this.socket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            console.log(data)
-            // Check if the received data contains an 'img_name' property
-            if (data.img_name) {
-              const timestamp = new Date().getTime(); // Get the current timestamp
-              this.imageName = `http://localhost:8000/dashboard-get-image/${data.img_name}?t=${timestamp}`;
-            } else {
-              this.progress = data;
-            }
-          };
-
-          this.socket.onerror = (event) => {
-          console.error('WebSocket error:', event);
-          };
-
-          this.socket.onclose = () => {
-          console.log('WebSocket connection closed');
-          };
-
-        },
-
-        async downloadData() {
- 
+      validateDates() {
+        if (this.startDate && this.endDate && this.startDate > this.endDate) {
+          this.errorMessage = 'End date must be later than or equal to start date.';
+        } else {
+          this.errorMessage = '';
+          this.createReport();
+        }
+      },
+      async createReport() {
         try {
           const reportRequest = {
-              startDate: this.startDate,
-              endDate: this.endDate,
-              action: 'fillDashboardDownload',
-              filter_id_value: this.filterIDValue,
-              filter_level: this.filterLevel
+            startDate: this.startDate,
+            endDate: this.endDate,
+            filter_id_value: this.filterIDValue,
+            filter_level: this.filterLevel,
+            include_prior_years: this.includePriorYears
           };
- 
+          const response = await axios.post('http://localhost:8000/get_oos_comp_data/', reportRequest);
+          console.log('Block Response Data:', response.data);
+
+        // Check if response.data is null or does not contain the html property
+        if (!response.data) {
+          throw new Error('Invalid response structure returned from the server');
+        }
+
+        // Insert the HTML content into the DOM
+        this.htmlResponse = response.data; // response.data contains the HTML content
+        console.log('HTML Response:', this.htmlResponse);
+
+        this.$nextTick(() => {
+          // Inject the CSS
+          const cssLink = document.createElement('link');
+          cssLink.rel = 'stylesheet';
+          cssLink.href = 'https://www.unpkg.com/dt_for_itables@2.0.11/dt_bundle.css';
+          document.head.appendChild(cssLink);
+
+          // Extract the dynamic ID from the HTML response
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(this.htmlResponse, 'text/html');
+          const tableElement = doc.querySelector('table');
+          const dynamicId = tableElement ? tableElement.id : null;
+
+          if (!dynamicId) {
+            console.log('Failed to extract dynamic ID from the HTML response');
+            throw new Error('Failed to extract dynamic ID from the HTML response');
+          }
+
+          // Extract the data from the response
+          const tableData = JSON.parse(tableElement.getAttribute('data-table-data'));
+
+          // Convert the data to a format that can be used in the script
+          const data = tableData.map((item, index) => [
+            index,
+            item.ProviderID,
+            item.ProviderName,
+            item.UnavailableReasonDescription,
+            item.BlockDate,
+            item.BlockedHours,
+            item.PayrollBlockedHours
+          ]);
+
+          // Inject the JavaScript module
+          const script = document.createElement('script');
+          script.type = 'module';
+          script.textContent = `
+            import {DataTable, jQuery as $} from 'https://www.unpkg.com/dt_for_itables@2.0.11/dt_bundle.js';
+            document.querySelectorAll("#${dynamicId}:not(.dataTable)").forEach(table => {
+              const data = ${JSON.stringify(data)};
+              let dt_args = {"layout": {"topStart": "pageLength", "topEnd": "search", "bottomStart": "info", "bottomEnd": "paging"}, "order": []};
+              dt_args["data"] = data;
+              new DataTable(table, dt_args);
+            });
+          `;
+          document.body.appendChild(script);
+        });
+        this.progress.step = 'Report Created Successfully';
+        } catch (error) {
+            console.error('Failed to create report:', error);
+            this.progress.step = 'Failed to Create Report';
+        }
+        },
+      async downloadData() {
+        try {
+          console.log('downloadData method called')
+          const reportRequest = {
+            startDate: this.startDate,
+            endDate: this.endDate,
+            action: 'BlockReportDownloadData',
+            filter_id_value: this.filterIDValue,
+            filter_level: this.filterLevel
+          };
           console.log(reportRequest)
           const response = await axios.post('http://localhost:8000/dashboard-get-file/', reportRequest, {
             responseType: 'blob', // Important for creating a downloadable file
@@ -228,10 +272,9 @@ export default {
         } catch (error) {
           console.error('Failed to download data:', error);
         }
-        },
-      }
-    }
-
+      },
+    },
+  }
 </script>
 
   <!-- ... -->
@@ -253,8 +296,8 @@ export default {
 }
 
 .multiselect-container, .progress-container2 {
-  max-height: 50vh;
-  max-width: 50vw;
+  max-height: 70vh;
+  max-width: 70vw;
   overflow: auto;
   border: 1px solid #ced4da;
   border-radius: 0.25rem;
@@ -317,18 +360,12 @@ export default {
   flex-direction: row;
   align-items: center; /* This will left-align the children */
 }
+
 .button-container {
   margin-bottom: 1rem; /* Add some space between the button and the progress bar */
   padding-left: 3rem; /* Add padding to the left side of the button */
   margin-right: 5rem; /* Add some space between the button and the progress bar */  
 }
-.download-button {
-  margin-left: 200px; /* Adjust this value as needed */
-  margin-bottom: 1rem; /* Add some space between the button and the progress bar */
-  padding-left: 3rem; /* Add padding to the left side of the button */
-  margin-right: 5rem; /* Add some space between the button and the progress bar */  
-}
-
 .container {
   display: flex;
   flex-direction: column;
@@ -342,9 +379,9 @@ export default {
 .outlined-image {
   border: 2px solid #000; /* Change the color and width as needed */
   margin-bottom: 1rem; /* Add some space below the heading */
-  width: 80%; /* Set the width of the image to 100% */
+  width: 90%; /* Set the width of the image to 100% */
   height: auto; /* This will maintain the aspect ratio of the image */
-  padding: 2rem; /* Add padding around the image */
+  padding: 1rem; /* Add padding around the image */
   box-sizing: border-box; /* Include the border in the total width and height of the image */
   border-radius: 0.25rem; /* Add rounded corners to the image */
   box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15); /* Add a box shadow to the image */
@@ -354,7 +391,28 @@ export default {
   text-align: center;
   margin-bottom: 1rem; /* Add some space below the heading */
 }
+.checkbox-container {
+  display: flex;
+  align-items: center;
+}
 .red-text {
   color: red;
 }
 </style>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Other head elements -->
+  <link href="https://www.unpkg.com/dt_for_itables@2.0.11/dt_bundle.css" rel="stylesheet">
+</head>
+<body>
+  <div id="app"></div>
+  <!-- Other scripts -->
+  <script type="module">
+    import {DataTable, jQuery as $} from 'https://www.unpkg.com/dt_for_itables@2.0.11/dt_bundle.js';
+    window.DataTable = DataTable;
+    window.$ = $;
+  </script>
+</body>
+</html>
