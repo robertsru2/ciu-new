@@ -121,11 +121,13 @@ export default {
         if (selected === 'department') {
           this.selectedDivision = '';
           this.selectedProvider = '';
+          //this.selectedProviderType = '';
           this.filterIDValue = this.selectedDepartment + (this.selectedProviderType !== 'ALL' ? '|' + this.selectedProviderType : '');
           this.filterLevel = 'DepartmentLevel' + (this.selectedProviderType !== 'ALL' ? '|' + 'ProviderCategory' : '');          
         } else if (selected === 'division') {
           this.selectedDepartment = '';
           this.selectedProvider = '';
+          this.selectedProviderType = 'ALL';
           this.filterIDValue = this.selectedDivision  + (this.selectedProviderType !== 'ALL' ? '|' + this.selectedProviderType : '')
           this.filterLevel = 'DivisionNM' + (this.selectedProviderType !== 'ALL' ? '|' + 'ProviderCategory' : '')
         } else if (selected === 'provider') {
