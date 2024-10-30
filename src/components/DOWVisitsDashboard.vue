@@ -167,7 +167,10 @@ export default {
           }
 
           this.socket = new WebSocket('ws://localhost:8000/dow-visits-dashboard');
-
+          this.current= 0
+          this.total= 0
+          this.step = 'Report Creation Progress Bar'
+          
           this.socket.onopen = () => {
           const reportRequest = {
               startDate: this.startDate,
