@@ -11,6 +11,18 @@
       <input type="date" v-model="endDate" min="2023-07-01" class="date-input">
       <b-button @click="createReports" variant="primary">Create Reports</b-button>
       <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
+      <div class="form-group">
+            <label for="divisions">Divisions:</label>
+            <multiselect 
+              v-model="selectedDivisions" 
+              :options="divisions" 
+              :multiple="true" 
+              :close-on-select="false" 
+              placeholder="Select divisions"
+              label="DivisionNM"
+              track-by="DivisionNM"
+            />
+      </div>
       <div class="progress-container">
         <p>{{ progress1.step }}</p>
         <progress :value="progress1.current" :max="progress1.total"></progress>
@@ -42,14 +54,27 @@
 </template>
   
   <script>
-  import axios from 'axios'
+import axios from 'axios'
+import Multiselect from 'vue-multiselect'
+import 'vue-multiselect/dist/vue-multiselect.min.css'
   //import config from '/config.json'; // adjust the path according to your file structure
    
   export default {
+    components: {
+      Multiselect
+    },
     data() {
       let now = new Date();
       let endDate = new Date(now.getFullYear(), now.getMonth(), 0);
       return {
+        departments: [],
+        divisions: [],
+        providers: [],
+        providertypes: [],
+        selectedDepartments: '',
+        selectedDivisions: '',
+        selectedProviders: '',
+        selectedProviderTypes: 'ALL',    // ALL is the defaul value
         socket: null,
         socket2: null,
         socket3: null,                
@@ -64,6 +89,21 @@
       }
     },
     async created() {
+      try {
+        const response = await axios.get('http://localhost:8000/dashboard-ciu')
+        this.departments = response.data.departments;
+        this.divisions = response.data.divisions;
+        this.providers = response.data.providers;
+        this.providertypes = response.data.providertypes;
+        console.log('Server is up');
+        console.log('Departments response:', response.data.departments); // Debugging line
+        console.log('Divisions response:', response.data.divisions); // Debugging line
+        console.log('Providers response:', response.data.providers); // Debugging line
+        console.log('Provider Types response:', response.data.providertypes); // Debugging line
+      } catch (error) {
+        console.log('Server is down');
+        this.progress.step = 'API Server Down';
+      }
       try {
         await axios.get('http://localhost:8000/load_files'); // replace with your server's URL
         console.log('Server is up');
@@ -270,5 +310,19 @@
 .button-container {
   display: flex;
   justify-content: space-between; /* Or use 'space-around' */
+}
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #333;
+}
+
+.multiselect {
+  width: 200%;
 }
 </style>

@@ -14,6 +14,8 @@ import NeuroPsychHours from '@/components/NeuroPsychHours.vue'
 import BlockReport from '@/components/BlockReport.vue'
 import DOWVisitsDashboard from '@/components/DOWVisitsDashboard.vue'
 import OOSCompesation from '@/components/OOSCompesation.vue'
+import UserLogin from '@/components/UserLogin.vue' // Import the new component
+
 
 const routes = [
   { path: '/dom-dashboard', name: 'DOMDashboard', component: DOMDashboard },
@@ -31,6 +33,7 @@ const routes = [
   { path: '/get_block_data', name: 'BlockReport', component: BlockReport },
   { path: '/dow-visits-dashboard', name: 'DOWVisitsDashboard', component: DOWVisitsDashboard },
   { path: '/oos-compensation', name: 'OOSCompensation', component: OOSCompesation },
+  { path: '/login', name: 'Login', component: UserLogin }, // Add the new route
 
   { path: '/', redirect: '/home' }  
   // other routes... 
