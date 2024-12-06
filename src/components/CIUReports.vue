@@ -127,10 +127,10 @@ import 'vue-multiselect/dist/vue-multiselect.min.css'
         divisions: [],
         providers: [],
         providertypes: [],
-        selectedDepartments: '',
-        selectedDivisions: '',
-        selectedProviders: '',
-        selectedProviderTypes: '', 
+        selectedDepartments: [],
+        selectedDivisions: [],
+        selectedProviders: [],
+        selectedProviderTypes: [], 
         socket: null,
         socket2: null,
         socket3: null,                
@@ -231,23 +231,23 @@ import 'vue-multiselect/dist/vue-multiselect.min.css'
                 this.filterIDValue = this.selectedDepartments
                   .map(department => department.DepartmentLevel)
                   .join('|') 
-                  + (this.selectedProviderTypes !== 'ALL' 
+                  + (this.selectedProviderTypes.Length > 0 
                     ? '|' + this.selectedProviderTypes
                       .map(providertype => providertype.ProviderCategory)
                       .join('|') 
                     : '');
-                this.filterLevel = 'DepartmentLevel' + (this.selectedProviderTypes !== 'ALL' ? '|' + 'ProviderCategory' : '');
+                this.filterLevel = 'DepartmentLevel' + (this.selectedProviderTypes.Length > 0 ? '|' + 'ProviderCategory' : '');
                 console.log('Selected Departments:', this.selectedDepartments);
                 console.log('Selected Provider Types:', this.selectedProviderTypes);
               } else if (this.selectedDivisions.length > 0) {
                 this.filterIDValue = this.selectedDivisions
                   .map(division => division.DivisionNM).join('|') 
-                  + (this.selectedProviderTypes !== 'ALL' 
+                  + (this.selectedProviderTypes.Length > 0 
                     ? '|' + this.selectedProviderTypes
                       .map(providertype => providertype.ProviderCategory)
                       .join('|') 
                     : '');
-                this.filterLevel = 'DivisionNM' + (this.selectedProviderTypes !== 'ALL' ? '|' + 'ProviderCategory' : '')
+                this.filterLevel = 'DivisionNM' + (this.selectedProviderTypes.Length > 0 ? '|' + 'ProviderCategory' : '')
                 ;
             } else if (this.selectedProviders.length > 0) {
                 this.filterIDValue = this.selectedProviders.map(provider =>provider.ProviderID).join('|');
