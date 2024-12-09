@@ -17,7 +17,6 @@
         <div> <router-link :to="{ name: 'BlockReport' }">Provider Block Time Report</router-link></div>
         <div> <router-link :to="{ name: 'DOWVisitsDashboard' }">Day of Week Dashboard</router-link></div>
         <div> <router-link :to="{ name: 'OOSCompensation' }">Out of State Compensation Data</router-link></div>
-        <!-- <div> <router-link :to="{ name: 'ProviderPage' }">Provider Settings</router-link></div> -->
       </div>
     </div>
   </div> 
