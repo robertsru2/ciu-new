@@ -1,48 +1,52 @@
 <template>
-    <div>
-      <h1>CIU Maintenance</h1>
-      <p>This is the CIU Maintenance page.</p>
-      <b-button variant="primary">Archive Reports</b-button>
+  <div class="container">
+    <div class="header">
+      <div class="logo-header">
+        <img class="logo" alt="National Jewish Health" src="../assets/NJ_Logo.png">
+        <h2 class="page-heading">{{ pageHeading }}</h2>
+      </div>
+      <div class="maintenance">
+        <div>
+          <router-link :to="{ name: 'ProviderPage' }">Provider Settings</router-link>
+        </div>
+      </div>
     </div>
-  </template>
-  
-  <!-- ... -->
-  
-  <style scoped>
-  .container {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+  </div> 
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      pageHeading: 'DOM CIU Maintenance',
+    }
   }
-  
-  .multiselect-container {
-    max-height: 50vh;
-    max-width: 50vw;
-    overflow: auto;
-    border: 1px solid #ced4da;
-    border-radius: 0.25rem;
-    padding: 0.5rem;
-    margin-bottom: 1rem;
-    background-color: #fff;
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-    transition: box-shadow 0.3s ease-in-out;
-  }
-  
-  .b-button {
-    align-self: center;
-    background-color: #007bff;
-    color: #fff;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 0.25rem;
-    transition: background-color 0.3s ease-in-out;
-  }
-  
-  .form-check-label {
-    transition: background-color 0.3s ease-in-out;
-  }
-  
-  .form-check-label:hover {
-    background-color: #f8f9fa;
-  }
-  </style>
+}
+</script>
+
+<style scoped>
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.logo-header {
+  display: flex;
+  align-items: center;
+}
+.logo {
+  width: 100px;
+  height: auto;
+}
+.page-heading {
+  margin-left: 10px;
+}
+.maintenance {
+  margin-top: 20px;
+}
+</style>

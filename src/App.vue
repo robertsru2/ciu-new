@@ -4,7 +4,7 @@
       <router-link to="/">Home</router-link>
       <router-link to="/dom-dashboard">DOM KPI Dashboards</router-link>
       <router-link to="/ciu-reports">CIU Reports</router-link>
-      <router-link to="/ciu-maintenence">CIU Maintenance</router-link>
+      <router-link to="/ciu-maintenance">CIU Maintenance</router-link>
       <router-link to="/login">Login</router-link>
     </nav>
     <router-view/>

@@ -22,6 +22,7 @@ const routes = [
   { path: '/dom-dashboard', name: 'DOMDashboard', component: DOMDashboard },
   { path: '/ciu-reports', name: 'CIUReports', component: CIUReports },
   { path: '/ciu-maintenance', name: 'CIUMaintenance', component: CIUMaintenance },
+  { path: '/provider-page', name: 'ProviderPage', component: ProviderPage },
   { path: '/home', name: 'Home', component: HomeView },
   { path: '/ciu-dashboard', name: 'CIUDashboard', component: CIUDashboard },
   { path: '/fill-rate-dashboard', name: 'FillRateDashboard', component: FillRateDashboard },
@@ -35,7 +36,6 @@ const routes = [
   { path: '/dow-visits-dashboard', name: 'DOWVisitsDashboard', component: DOWVisitsDashboard },
   { path: '/oos-compensation', name: 'OOSCompensation', component: OOSCompesation },
   { path: '/login', name: 'Login', component: UserLogin }, // Add the new route
-  { path: '/provider-page', name: 'ProviderPage', component: ProviderPage },
 
   { path: '/', redirect: '/home' }  
   // other routes... 
