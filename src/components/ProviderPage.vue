@@ -9,32 +9,33 @@
           </li>
         </ul>
       </div>
+      <button @click="createNewProvider" class="btn btn-primary new-button">New</button>
     </div>
-    <div class="form-container">
+    <div class="form-container-wrapper">
       <h1>Update Provider</h1>
-      <form @submit.prevent="updateProvider" class="form-grid">
-        <div v-for="field in fields" :key="field.name" class="form-group">
-          <label :for="field.name" class="form-label">{{ field.label }}</label>
-          <div class="form-input">
-            <input
-              v-if="field.type !== 'textarea'"
-              :type="field.type"
-              class="form-control"
-              :id="field.name"
-              v-model="provider[field.name]"
-            />
-            <textarea
-              v-else
-              class="form-control"
-              :id="field.name"
-              v-model="provider[field.name]"
-            ></textarea>
+      <div class="form-container">
+        <form @submit.prevent="updateProvider" class="form-grid">
+          <div v-for="field in fields" :key="field.name" class="form-group">
+            <label :for="field.name" class="form-label">{{ field.label }}</label>
+            <div class="form-input">
+              <input
+                v-if="field.type !== 'textarea'"
+                :type="field.type"
+                class="form-control"
+                :id="field.name"
+                v-model="provider[field.name]"
+              />
+              <textarea
+                v-else
+                class="form-control"
+                :id="field.name"
+                v-model="provider[field.name]"
+              ></textarea>
+            </div>
           </div>
-        </div>
-        <div class="form-group full-width">
-          <button type="submit" class="btn btn-primary">Update Provider</button>
-        </div>
-      </form>
+        </form>
+      </div>
+      <button @click="updateProvider" class="btn btn-primary update-button">Update Provider</button>
     </div>
   </div>
 </template>
@@ -108,6 +109,31 @@ export default {
       this.provider = { ...provider };
       this.selectedProviderID = provider.ProviderID;
     },
+    createNewProvider() {
+      this.provider = {
+        ProviderID: '',
+        ProviderNM: '',
+        PrimaryDepartmentID: '',
+        DepartmentNM: '',
+        ProviderTypeNM: '',
+        ProviderTypeDSC: '',
+        DoctorDegreeNM: '',
+        ProviderCategory: '',
+        DivisionNM: '',
+        SubSpeciaity: '',
+        DepartmentLevel: '',
+        ExpectedHours: 0,
+        ExpectedNew: 0,
+        ExpectedFU: 0,
+        ExpectedRVU: 0,
+        AmbulatoryFTE: 0,
+        cFTE: 0,
+        FiscalYear: 0,
+        FMLACompHours: 0,
+        Active: 1
+      };
+      this.selectedProviderID = null;
+    },
     async updateProvider() {
       try {
         const response = await axios.post('http://localhost:8000/providers', this.provider);
@@ -125,6 +151,13 @@ export default {
   display: flex;
   gap: 20px;
   height: 100vh; /* Adjust the height as needed */
+  justify-content: center;
+  align-items: center;
+}
+
+.tree-view-wrapper,
+.form-container-wrapper {
+  height: 90%;
 }
 
 .tree-view-wrapper {
@@ -165,21 +198,42 @@ export default {
   color: white;
 }
 
+.new-button {
+  margin-top: 10px;
+  align-self: center;
+}
+
+.form-container-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 67%;
+  background-color: #f9f9f9;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  justify-content: space-between;
+}
+
 .form-container {
   flex: 1;
-  padding: 10px;
   overflow-y: auto;
+}
+
+.update-button {
+  align-self: center;
+  margin-top: 10px;
 }
 
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  gap: 10px; /* Decreased gap between fields */
 }
 
 .form-group {
   display: flex;
   align-items: center;
+  margin-bottom: 5px; /* Decreased margin between fields */
 }
 
 .form-label {
