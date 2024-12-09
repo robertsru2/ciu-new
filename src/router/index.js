@@ -15,6 +15,7 @@ import BlockReport from '@/components/BlockReport.vue'
 import DOWVisitsDashboard from '@/components/DOWVisitsDashboard.vue'
 import OOSCompesation from '@/components/OOSCompesation.vue'
 import UserLogin from '@/components/UserLogin.vue' // Import the new component
+import ProviderPage from '@/components/ProviderPage.vue'
 
 
 const routes = [
@@ -34,6 +35,7 @@ const routes = [
   { path: '/dow-visits-dashboard', name: 'DOWVisitsDashboard', component: DOWVisitsDashboard },
   { path: '/oos-compensation', name: 'OOSCompensation', component: OOSCompesation },
   { path: '/login', name: 'Login', component: UserLogin }, // Add the new route
+  { path: '/provider-page', name: 'ProviderPage', component: ProviderPage },
 
   { path: '/', redirect: '/home' }  
   // other routes... 
