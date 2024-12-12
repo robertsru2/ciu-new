@@ -48,6 +48,7 @@ export default {
     return {
       providers: [],
       provider: {
+        ID: null,
         ProviderID: '',
         ProviderNM: '',
         PrimaryDepartmentID: '',
@@ -111,6 +112,7 @@ export default {
     },
     createNewProvider() {
       this.provider = {
+        ID: null,
         ProviderID: '',
         ProviderNM: '',
         PrimaryDepartmentID: '',
@@ -136,7 +138,8 @@ export default {
     },
     async updateProvider() {
       try {
-        const response = await axios.post('http://localhost:8000/providers', this.provider);
+        console.log('Updating provider:', this.provider);
+        const response = await axios.post('http://localhost:8000/providers-update/', this.provider);
         console.log('Provider updated:', response.data);
       } catch (error) {
         console.error('Error updating provider:', error);
