@@ -141,6 +141,7 @@ import 'vue-multiselect/dist/vue-multiselect.min.css'
         endDate: endDate.toISOString().substr(0, 10), // Use the calculated endDate here
         progress1: { current: 0, total: 0, step: 'Report Creation Progress Bar' },
         progress2: { current: 0, total: 0, step: 'Report Printing Progress Bar' },
+        currentFiscalYear: this.getCurrentFiscalYear(),
         errorMessage: '',
         filterIDValue: 'DOM',
         filterLevel: 'DepartmentLevel',       // DepartmentLevel, DivisionNM, ProviderID
@@ -195,6 +196,18 @@ import 'vue-multiselect/dist/vue-multiselect.min.css'
         }
     },    
         methods: {
+          getCurrentFiscalYear() {
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth() + 1; // getMonth() returns 0-11
+            const currentYear = currentDate.getFullYear();
+            
+            // Fiscal year determination
+            if (currentMonth >= 7) {
+              return currentYear + 1;
+            } else {
+              return currentYear;
+            }
+          },
           validateDates() {
             if (this.startDate && this.endDate && this.startDate > this.endDate) {
               this.errorMessage = 'End date must be later than start date.';

@@ -2,14 +2,21 @@
   <div class="container">
     <div class="tree-view-wrapper">
       <h2>Providers</h2>
+      <div class="search-container">
+          <input type="text" v-model="searchQuery" placeholder="Search Providers" class="search-input" />
+          <button @click="clearSearch" class="btn btn-secondary clear-button">Clear Search</button>
+      </div>
       <div class="tree-view-container">
         <ul>
-          <li v-for="provider in providers" :key="provider.ProviderID" @click="selectProvider(provider)" :class="{ selected: provider.ProviderID === selectedProviderID }">
+          <li v-for="provider in filteredProviders" :key="provider.ProviderID" @click="selectProvider(provider)" :class="{ selected: provider.ProviderID === selectedProviderID }">
             {{ provider.ProviderNM }}
           </li>
         </ul>
       </div>
-      <button @click="createNewProvider" class="btn btn-primary new-button">New</button>
+      <div class="button-group">
+        <button @click="createNewProvider" class="btn btn-primary new-button">New</button>
+        <button @click="deleteProvider" class="btn btn-danger delete-button">Delete</button>
+      </div>
     </div>
     <div class="form-container-wrapper">
       <h1>Update Provider</h1>
@@ -24,12 +31,16 @@
                 class="form-control"
                 :id="field.name"
                 v-model="provider[field.name]"
+                :maxlength="field.name === 'ProviderID' ? 7 : null"
+                :readonly="field.name === 'FiscalYear'"
+                @input="field.name === 'ProviderID' ? formatProviderID() : formatToUpperCase(field.name)"
               />
               <textarea
                 v-else
                 class="form-control"
                 :id="field.name"
                 v-model="provider[field.name]"
+                @input="formatToUpperCase(field.name)"
               ></textarea>
             </div>
           </div>
@@ -58,17 +69,18 @@ export default {
         DoctorDegreeNM: '',
         ProviderCategory: '',
         DivisionNM: '',
-        SubSpeciaity: '',
-        DepartmentLevel: '',
-        ExpectedHours: 0,
+        Subspecialty: '',
+        DepartmentLevel: 'DOM',
+        ExpectedHours: 1472.0,
         ExpectedNew: 0,
         ExpectedFU: 0,
-        ExpectedRVU: 0,
-        AmbulatoryFTE: 0,
-        cFTE: 0,
+        ExpectedRVU: 3700.0,
+        AmbulatoryFTE: 1.0,
+        cFTE: 1.0,
         FiscalYear: 0,
-        FMLACompHours: 0,
-        Active: 1
+        FMLACompHours: 0.0,
+        Active: 1,
+        UpdateDate: ''
       },
       fields: [
         { name: 'ProviderID', label: 'Provider ID', type: 'text' },
@@ -80,7 +92,7 @@ export default {
         { name: 'DoctorDegreeNM', label: 'Doctor Degree Name', type: 'text' },
         { name: 'ProviderCategory', label: 'Provider Category', type: 'text' },
         { name: 'DivisionNM', label: 'Division Name', type: 'text' },
-        { name: 'SubSpeciaity', label: 'Sub Specialty', type: 'text' },
+        { name: 'Subspecialty', label: 'Sub Specialty', type: 'text' },
         { name: 'DepartmentLevel', label: 'Department Level', type: 'text' },
         { name: 'ExpectedHours', label: 'Expected Hours', type: 'number' },
         { name: 'ExpectedNew', label: 'Expected New', type: 'number' },
@@ -92,20 +104,47 @@ export default {
         { name: 'FMLACompHours', label: 'FMLA Comp Hours', type: 'number' },
         { name: 'Active', label: 'Active', type: 'number' }
       ],
-      selectedProviderID: null
+      selectedProviderID: null,
+      currentFiscalYear: this.getCurrentFiscalYear(),
+      searchQuery: ''
     };
   },
-  async created() {
-    try {
-      const response = await axios.get('http://localhost:8000/providers');
-      console.log('Providers:', response.data);
-      this.providers = response.data;
-      console.log('Assigned Providers:', this.providers);
-    } catch (error) {
-      console.error('Error fetching providers:', error);
+  computed: {
+    filteredProviders() {
+      return this.providers.filter(provider =>
+        provider.ProviderNM.toLowerCase().includes(this.searchQuery.toLowerCase())
+      );
     }
   },
+  async created() {
+    this.fetchProviders();
+  },
   methods: {
+    getCurrentFiscalYear() {
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth() + 1; // getMonth() returns 0-11
+      const currentYear = currentDate.getFullYear();
+      
+      // Fiscal year determination
+      if (currentMonth >= 7) {
+        return currentYear + 1;
+      } else {
+        return currentYear;
+      }
+    },
+    async fetchProviders() {
+      try {
+        const response = await axios.get(`http://localhost:8000/providers?fiscalYear=${this.currentFiscalYear}`);
+        console.log('Providers:', response.data);
+        this.providers = response.data;
+        console.log('Assigned Providers:', this.providers);
+        if (this.providers.length > 0) {
+          this.selectProvider(this.providers[0]); // Set the provider data to the first provider
+        }
+      } catch (error) {
+        console.error('Error fetching providers:', error);
+      }
+    },
     selectProvider(provider) {
       this.provider = { ...provider };
       this.selectedProviderID = provider.ProviderID;
@@ -122,27 +161,47 @@ export default {
         DoctorDegreeNM: '',
         ProviderCategory: '',
         DivisionNM: '',
-        SubSpeciaity: '',
-        DepartmentLevel: '',
-        ExpectedHours: 0,
+        Subspecialty: '',
+        DepartmentLevel: 'DOM',
+        ExpectedHours: 1472,
         ExpectedNew: 0,
         ExpectedFU: 0,
-        ExpectedRVU: 0,
-        AmbulatoryFTE: 0,
-        cFTE: 0,
-        FiscalYear: 0,
+        ExpectedRVU: 3700.0,
+        AmbulatoryFTE: 1.0,
+        cFTE: 1.0,
+        FiscalYear: this.getCurrentFiscalYear,
         FMLACompHours: 0,
-        Active: 1
+        Active: 1,
+        UpdateDate: ''
       };
       this.selectedProviderID = null;
     },
     async updateProvider() {
       try {
-        console.log('Updating provider:', this.provider);
         const response = await axios.post('http://localhost:8000/providers-update/', this.provider);
         console.log('Provider updated:', response.data);
+        this.fetchProviders(); // Fetch the updated list of providers
       } catch (error) {
         console.error('Error updating provider:', error);
+      }
+    },
+    async deleteProvider() {
+      if (confirm('Are you sure you want to delete this provider?')) {
+        try {
+          const response = await axios.delete(`http://localhost:8000/providers-delete/${this.provider.ID}`);
+          console.log('Provider deleted:', response.data);
+          this.fetchProviders(); // Fetch the updated list of providers
+        } catch (error) {
+          console.error('Error deleting provider:', error);
+        }
+      }
+    },
+    clearSearch() {
+      this.searchQuery = '';
+    },    
+    formatToUpperCase(fieldName) {
+      if (typeof this.provider[fieldName] === 'string') {
+        this.provider[fieldName] = this.provider[fieldName].toUpperCase();
       }
     }
   }
@@ -167,6 +226,25 @@ export default {
   display: flex;
   flex-direction: column;
   width: 33%;
+  flex: 1; /* Ensure it takes up the remaining space */
+}
+
+.search-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.search-input {
+  padding: 5px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  flex: 1;
+}
+
+.clear-button {
+  padding: 5px 10px;
+  height: 100%; /* Match the height of the input field */
 }
 
 .tree-view-container {
@@ -199,11 +277,6 @@ export default {
 .tree-view-container li.selected {
   background-color: #007bff;
   color: white;
-}
-
-.new-button {
-  margin-top: 10px;
-  align-self: center;
 }
 
 .form-container-wrapper {
@@ -257,4 +330,20 @@ export default {
 .form-control {
   width: 100%;
 }
+
+.button-group {
+    display: flex;
+    justify-content: left; /* Align buttons horizontally */
+    gap: 10px;
+}
+
+.new-button {
+  margin-top: 10px;
+  align-self: center;
+}
+
+.delete-button {
+  align-self: center;
+}
+
 </style>
