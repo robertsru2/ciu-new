@@ -46,4 +46,17 @@ const router = createRouter({
   routes
 })
 
+router.beforeEach((to, from, next) => {
+  const fromComponent = from.matched.find(record => record.name === 'ProviderPage')?.components.default;
+  if (from.meta.requiresSave && fromComponent?.data().formChanged) {
+    if (confirm('You have unsaved changes. Are you sure you want to leave?')) {
+      next();
+    } else {
+      next(false);
+    }
+  } else {
+    next();
+  }
+});
+
 export default router

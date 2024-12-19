@@ -124,7 +124,7 @@ export default {
   },
   mounted() {
     console.log('Adding beforeunload event listener');
-    window.addEventListener('beforeunload', this.beforeUnloadHandler);
+    window.addEventListener('beforeunload', this.beforeUnloadHandler.bind(this));
    // Additional debugging to check if the event listener is attached
     window.addEventListener('beforeunload', () => {
       console.log('beforeunload event triggered');
@@ -134,7 +134,7 @@ export default {
   },
   beforeUnmount() {
     console.log('Removing beforeunload event listener');
-    window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+    window.removeEventListener('beforeunload', this.beforeUnloadHandler.bind(this));
     console.log('window.onbeforeunload = null Removing beforeunload event listener');
     window.onbeforeunload = null;
   },
