@@ -48,6 +48,7 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const fromComponent = from.matched.find(record => record.name === 'ProviderPage')?.components.default;
+  console.log("fromComponent in router:",fromComponent);
   if (from.meta.requiresSave && fromComponent?.data().formChanged) {
     if (confirm('You have unsaved changes. Are you sure you want to leave?')) {
       next();

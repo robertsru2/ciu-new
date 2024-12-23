@@ -193,13 +193,14 @@ export default {
         ExpectedRVU: 3700.0,
         AmbulatoryFTE: 1.0,
         cFTE: 1.0,
-        FiscalYear: this.getCurrentFiscalYear,
+        FiscalYear: this.getCurrentFiscalYear(),
         FMLACompHours: 0.0,
         Active: 1,
         UpdateDate: ''
       };
       this.selectedProviderID = null;
       this.formChanged = false; // Reset form changed flag
+      console.log('New provider created:', this.provider);
     },
     async updateProvider() {
       try {
