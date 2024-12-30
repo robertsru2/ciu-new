@@ -243,6 +243,7 @@ export default {
           this.provider
         );
         console.log('Provider updated:', response.data);
+        this.clearSearch()
         this.fetchProviders(); // Fetch the updated list of providers
         this.formChanged = false; // Reset form changed flag
       } catch (error) {
