@@ -3,19 +3,35 @@
     <div class="tree-view-wrapper">
       <h2>Providers</h2>
       <div class="search-container">
-          <input type="text" v-model="searchQuery" placeholder="Search Providers" class="search-input" />
-          <button @click="clearSearch" class="btn btn-secondary clear-button">Clear Search</button>
+        <input
+          type="text"
+          v-model="searchQuery"
+          placeholder="Search Providers"
+          class="search-input"
+        />
+        <button @click="clearSearch" class="btn btn-secondary clear-button">
+          Clear Search
+        </button>
       </div>
       <div class="tree-view-container">
         <ul>
-          <li v-for="provider in filteredProviders" :key="provider.ProviderID" @click="confirmNavigation(provider)" :class="{ selected: provider.ProviderID === selectedProviderID }">
+          <li
+            v-for="provider in filteredProviders"
+            :key="provider.ProviderID"
+            @click="confirmNavigation(provider)"
+            :class="{ selected: provider.ProviderID === selectedProviderID }"
+          >
             {{ provider.ProviderNM }}
           </li>
         </ul>
       </div>
       <div class="button-group">
-        <button @click="createNewProvider" class="btn btn-primary new-button">New</button>
-        <button @click="deleteProvider" class="btn btn-danger delete-button">Delete</button>
+        <button @click="createNewProvider" class="btn btn-primary new-button">
+          New
+        </button>
+        <button @click="deleteProvider" class="btn btn-danger delete-button">
+          Delete
+        </button>
       </div>
     </div>
     <div class="form-container-wrapper">
@@ -47,7 +63,9 @@
           </div>
         </form>
       </div>
-      <button @click="updateProvider" class="btn btn-primary update-button">Update Provider</button>
+      <button @click="updateProvider" class="btn btn-primary update-button">
+        Update Provider
+      </button>
     </div>
   </div>
 </template>
@@ -81,7 +99,7 @@ export default {
         FiscalYear: 0,
         FMLACompHours: 0.0,
         Active: 1,
-        UpdateDate: ''
+        UpdateDate: '',
       },
       fields: [
         { name: 'ProviderID', label: 'Provider ID', type: 'text' },
@@ -103,21 +121,21 @@ export default {
         { name: 'cFTE', label: 'Clinical FTE', type: 'number' },
         { name: 'FiscalYear', label: 'Fiscal Year', type: 'number' },
         { name: 'FMLACompHours', label: 'FMLA Comp Hours', type: 'number' },
-        { name: 'Active', label: 'Active', type: 'number' }
+        { name: 'Active', label: 'Active', type: 'number' },
       ],
       selectedProviderID: null,
       currentFiscalYear: this.getCurrentFiscalYear(),
       searchQuery: '',
-      formChanged: false, // Track if form has been changed      
-      pendingProvider: null  // Track the provider to navigate to
+      formChanged: false, // Track if form has been changed
+      pendingProvider: null, // Track the provider to navigate to
     };
   },
   computed: {
     filteredProviders() {
-      return this.providers.filter(provider =>
+      return this.providers.filter((provider) =>
         provider.ProviderNM.toLowerCase().includes(this.searchQuery.toLowerCase())
       );
-    }
+    },
   },
   async created() {
     this.fetchProviders();
@@ -125,7 +143,7 @@ export default {
   mounted() {
     console.log('Adding beforeunload event listener');
     window.addEventListener('beforeunload', this.beforeUnloadHandler);
-   // Additional debugging to check if the event listener is attached
+    // Additional debugging to check if the event listener is attached
     window.addEventListener('beforeunload', () => {
       console.log('beforeunload event triggered');
     });
@@ -143,7 +161,7 @@ export default {
       const currentDate = new Date();
       const currentMonth = currentDate.getMonth() + 1; // getMonth() returns 0-11
       const currentYear = currentDate.getFullYear();
-      
+
       // Fiscal year determination
       if (currentMonth >= 7) {
         return currentYear + 1;
@@ -152,22 +170,22 @@ export default {
       }
     },
     async fetchProviders() {
-    try {
-      const response = await axios.get(`http://localhost:8000/providers`, {
-        params: {
-          fiscal_year: this.currentFiscalYear // Ensure the parameter name matches what the backend expects
+      try {
+        const response = await axios.get(`http://localhost:8000/providers`, {
+          params: {
+            fiscal_year: this.currentFiscalYear, // Ensure the parameter name matches what the backend expects
+          },
+        });
+        console.log('Providers from API:', response.data);
+        this.providers = response.data;
+        console.log('Assigned Providers:', this.providers);
+        if (this.providers.length > 0) {
+          this.selectProvider(this.providers[0]); // Set the provider data to the first provider
         }
-    });
-    console.log('Providers from API:', response.data);
-    this.providers = response.data;
-    console.log('Assigned Providers:', this.providers);
-    if (this.providers.length > 0) {
-      this.selectProvider(this.providers[0]); // Set the provider data to the first provider
-    }
-    } catch (error) {
-      console.error('Error fetching providers:', error);
-    }
-},
+      } catch (error) {
+        console.error('Error fetching providers:', error);
+      }
+    },
     selectProvider(provider) {
       this.provider = { ...provider };
       this.selectedProviderID = provider.ProviderID;
@@ -196,7 +214,7 @@ export default {
         FiscalYear: this.getCurrentFiscalYear(),
         FMLACompHours: 0.0,
         Active: 1,
-        UpdateDate: ''
+        UpdateDate: '',
       };
       this.selectedProviderID = null;
       this.formChanged = false; // Reset form changed flag
@@ -205,14 +223,25 @@ export default {
     async updateProvider() {
       try {
         // Explicitly convert numeric fields to floats before sending to API
-        this.provider.ExpectedRVU = parseFloat(this.provider.ExpectedRVU).toFixed(1);
-        this.provider.ExpectedHours = parseFloat(this.provider.ExpectedHours).toFixed(1);
-        this.provider.AmbulatoryFTE = parseFloat(this.provider.AmbulatoryFTE).toFixed(1);
+        this.provider.ExpectedRVU = parseFloat(
+          this.provider.ExpectedRVU
+        ).toFixed(1);
+        this.provider.ExpectedHours = parseFloat(
+          this.provider.ExpectedHours
+        ).toFixed(1);
+        this.provider.AmbulatoryFTE = parseFloat(
+          this.provider.AmbulatoryFTE
+        ).toFixed(1);
         this.provider.cFTE = parseFloat(this.provider.cFTE).toFixed(1);
-        this.provider.FMLACompHours = parseFloat(this.provider.FMLACompHours).toFixed(1);
+        this.provider.FMLACompHours = parseFloat(
+          this.provider.FMLACompHours
+        ).toFixed(1);
         this.provider.UpdateDate = new Date().toISOString();
         console.log('Provider updated:', this.provider);
-        const response = await axios.post('http://localhost:8000/providers-update/', this.provider);
+        const response = await axios.post(
+          'http://localhost:8000/providers-update/',
+          this.provider
+        );
         console.log('Provider updated:', response.data);
         this.fetchProviders(); // Fetch the updated list of providers
         this.formChanged = false; // Reset form changed flag
@@ -223,7 +252,9 @@ export default {
     async deleteProvider() {
       if (confirm('Are you sure you want to delete this provider?')) {
         try {
-          const response = await axios.delete(`http://localhost:8000/providers-delete/${this.provider.ID}`);
+          const response = await axios.delete(
+            `http://localhost:8000/providers-delete/${this.provider.ID}`
+          );
           console.log('Provider deleted:', response.data);
           this.fetchProviders(); // Fetch the updated list of providers
         } catch (error) {
@@ -233,10 +264,10 @@ export default {
     },
     clearSearch() {
       this.searchQuery = '';
-    }, 
-     formatProviderID() {
+    },
+    formatProviderID() {
       this.provider.ProviderID = this.provider.ProviderID.replace(/\D/g, '').slice(0, 7);
-    },   
+    },
     formatToUpperCase(fieldName) {
       if (typeof this.provider[fieldName] === 'string') {
         this.provider[fieldName] = this.provider[fieldName].toUpperCase();
@@ -254,11 +285,11 @@ export default {
     beforeUnloadHandler(event) {
       console.log('beforeUnloadHandler called');
       if (this.formChanged) {
-        const message = 'You have unsaved changes. Are you sure you want to leave?';
+        const message =
+          'You have unsaved changes. Are you sure you want to leave?';
         event.returnValue = message; // Standard for most browsers
         return message; // For some older browsers
-      }
-      else {
+      } else {
         console.log('No changes detected in beforeUnloadHandler');
         return undefined;
       }
@@ -266,7 +297,11 @@ export default {
     confirmNavigation(provider) {
       if (this.formChanged) {
         this.pendingProvider = provider;
-        if (confirm('You have unsaved changes. Do you want to discard them and navigate away?')) {
+        if (
+          confirm(
+            'You have unsaved changes. Do you want to discard them and navigate away?'
+          )
+        ) {
           this.navigateToProvider();
         }
       } else {
@@ -278,8 +313,8 @@ export default {
         this.selectProvider(this.pendingProvider);
         this.pendingProvider = null;
       }
-    }
-  }
+    },
+  },
 };
 </script>
 
@@ -407,18 +442,17 @@ export default {
 }
 
 .button-group {
-    display: flex;
-    justify-content: left; /* Align buttons horizontally */
-    gap: 10px;
+  display: flex;
+  justify-content: flex-start; /* Align buttons horizontally */
+  align-items: center; /* Align vertically with flex items */
+  gap: 10px;
 }
 
 .new-button {
-  margin-top: 10px;
-  align-self: center;
+    margin-top: 0; /* Reset the margin */
 }
 
 .delete-button {
-  align-self: center;
+  margin-top: 0; /* Reset the margin */
 }
-
 </style>
