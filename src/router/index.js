@@ -15,14 +15,15 @@ import BlockReport from '@/components/BlockReport.vue'
 import DOWVisitsDashboard from '@/components/DOWVisitsDashboard.vue'
 import OOSCompesation from '@/components/OOSCompesation.vue'
 import UserLogin from '@/components/UserLogin.vue' // Import the new component
-import ProviderPage from '@/components/ProviderPage.vue'
+//import ProviderPage from '@/components/ProviderPage.vue'
+import ProviderPageNew from '@/components/ProviderPageNew.vue'
 
 
 const routes = [
   { path: '/dom-dashboard', name: 'DOMDashboard', component: DOMDashboard },
   { path: '/ciu-reports', name: 'CIUReports', component: CIUReports },
   { path: '/ciu-maintenance', name: 'CIUMaintenance', component: CIUMaintenance },
-  { path: '/provider-page', name: 'ProviderPage', component: ProviderPage },
+  { path: '/provider-page', name: 'ProviderPageNew', component: ProviderPageNew },
   { path: '/home', name: 'Home', component: HomeView },
   { path: '/ciu-dashboard', name: 'CIUDashboard', component: CIUDashboard },
   { path: '/fill-rate-dashboard', name: 'FillRateDashboard', component: FillRateDashboard },
@@ -47,7 +48,7 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  const fromComponent = from.matched.find(record => record.name === 'ProviderPage')?.components.default;
+  const fromComponent = from.matched.find(record => record.name === 'ProviderPageNew')?.components.default;
   console.log("fromComponent in router:",fromComponent);
   if (from.meta.requiresSave && fromComponent?.data().formChanged) {
     if (confirm('You have unsaved changes. Are you sure you want to leave?')) {

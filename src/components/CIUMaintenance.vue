@@ -7,7 +7,7 @@
       </div>
       <div class="maintenance">
         <div>
-          <router-link :to="{ name: 'ProviderPage' }">Provider Settings</router-link>
+          <router-link :to="{ name: 'ProviderPageNew' }">Provider Settings</router-link>
         </div>
       </div>
     </div>
