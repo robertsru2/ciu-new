@@ -9,6 +9,9 @@
         <div>
           <router-link :to="{ name: 'ProviderPageNew' }">Provider Settings</router-link>
         </div>
+        <div>
+          <router-link :to="{ name: 'PayPeriodUploader' }">Pay Period Settings</router-link>
+        </div>
       </div>
     </div>
   </div> 

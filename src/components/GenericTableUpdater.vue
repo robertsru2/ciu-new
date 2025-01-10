@@ -1,19 +1,3 @@
-Okay, let's refactor this Vue.js component to make it more generic and reusable for different tables and eventually support parent-child relationships. Here's the breakdown of changes and the code:
-
-Key Changes and Considerations:
-
-Dynamic Table & Fields: The component will accept a tableConfig prop that defines the table name, API endpoints, fields, and their types.
-
-Abstracted Data Handling: The component will use methods that are flexible enough to handle data fetching, updating, and deletion for various tables.
-
-Dynamic Form Generation: The form generation will be based on the fields array provided in the tableConfig.
-
-Parent-Child (Future): While not fully implemented, we'll set up the component so it's easier to extend with parent-child logic later.
-
-Reusable Methods: Methods like fetchData, updateData, deleteData, and handleInputChange will be generic.
-
-Refactored Component Code:
-
 <template>
   <div class="container">
     <div class="tree-view-wrapper">
@@ -114,6 +98,7 @@ export default {
       item: {},
       selectedItemID: null,
       currentFiscalYear: this.getCurrentFiscalYear(),
+      currentYear: this.getCurrentYear(),
       searchQuery: '',
       formChanged: false,
       pendingItem: null,
@@ -164,18 +149,23 @@ export default {
             return currentYear;
         }
     },
+    getCurrentYear() {
+        const currentDate = new Date();
+        return currentDate.getFullYear();
+    },
     async fetchData() {
         try {
             const response = await axios.get(
                 `${this.tableConfig.apiBaseUrl}/${this.tableConfig.tableName}`,
                 {
                     params: {
-                        fiscal_year: this.currentFiscalYear,
+                        current_year: this.currentYear,
                     },
                 }
             );
             console.log(`Fetched from ProviderNew component ${this.tableConfig.tableName}:`, response.data);
             this.items = response.data;
+            console.log(`Fetched Items ${this.tableConfig.tableName}:`, this.items);
             if (this.items.length > 0) {
                 this.selectItem(this.items[0]);
             }
@@ -193,8 +183,13 @@ export default {
             for (const field of this.tableConfig.fields) {
               this.item[field.name] = field.defaultValue ?? '';
             }
-          this.selectedItemID = null;
-          this.formChanged = false;
+            // Set FiscalYear field to the current fiscal year
+            const fiscalYearField = this.tableConfig.fields.find(field => field.name === 'FiscalYear');
+            if (fiscalYearField) {
+              this.item[fiscalYearField.name] = this.getCurrentFiscalYear();
+            }
+            this.selectedItemID = null;
+            this.formChanged = false;
         console.log(`New ${this.tableConfig.tableName} created:`, this.item);
       },
       async updateItem() {

@@ -17,6 +17,7 @@ import OOSCompesation from '@/components/OOSCompesation.vue'
 import UserLogin from '@/components/UserLogin.vue' // Import the new component
 //import ProviderPage from '@/components/ProviderPage.vue'
 import ProviderPageNew from '@/components/ProviderPageNew.vue'
+import PayPeriodUploader from '@/components/PayPeriodUploader.vue'
 
 
 const routes = [
@@ -24,6 +25,7 @@ const routes = [
   { path: '/ciu-reports', name: 'CIUReports', component: CIUReports },
   { path: '/ciu-maintenance', name: 'CIUMaintenance', component: CIUMaintenance },
   { path: '/provider-page', name: 'ProviderPageNew', component: ProviderPageNew },
+  { path: '/pay-period-uploader', name: 'PayPeriodUploader', component: PayPeriodUploader },
   { path: '/home', name: 'Home', component: HomeView },
   { path: '/ciu-dashboard', name: 'CIUDashboard', component: CIUDashboard },
   { path: '/fill-rate-dashboard', name: 'FillRateDashboard', component: FillRateDashboard },

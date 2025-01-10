@@ -43,18 +43,18 @@
             { name: 'Active', label: 'Active', type: 'number', defaultValue: 1 },
           ],
         },
-        departmentTableConfig: {
-          tableName: 'departments',
-          displayName: 'Departments',
-          idField: 'DepartmentID',
-          displayField: 'DepartmentNM',
-          apiBaseUrl: 'http://localhost:8000',
-            fields: [
-            { name: 'DepartmentID', label: 'Department ID', type: 'text', maxlength: 4, toUpperCase: true},
-            { name: 'DepartmentNM', label: 'Department Name', type: 'text', toUpperCase: true},
-            { name: 'DepartmentDSC', label: 'Description', type: 'textarea', toUpperCase: true}
-            ]
-        }
+        // departmentTableConfig: {
+        //   tableName: 'departments',
+        //   displayName: 'Departments',
+        //   idField: 'DepartmentID',
+        //   displayField: 'DepartmentNM',
+        //   apiBaseUrl: 'http://localhost:8000',
+        //     fields: [
+        //     { name: 'DepartmentID', label: 'Department ID', type: 'text', maxlength: 4, toUpperCase: true},
+        //     { name: 'DepartmentNM', label: 'Department Name', type: 'text', toUpperCase: true},
+        //     { name: 'DepartmentDSC', label: 'Description', type: 'textarea', toUpperCase: true}
+        //     ]
+        // }
       };
     },
   };
