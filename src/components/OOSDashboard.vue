@@ -198,12 +198,12 @@ export default {
           const reportRequest = {
             startDate: this.startDate,
             endDate: this.endDate,
-            action: 'CIUDashboardDownloadData',
+            action: 'OOSDashboardDownloadData',
             filter_id_value: this.filterIDValue,
             filter_level: this.filterLevel
           };
           console.log(reportRequest)
-          const response = await axios.post('http://localhost:8000/dashboard-get-file/', reportRequest, {
+          const response = await axios.post('http://localhost:8000/dashboard-get-file-new/', reportRequest, {
             responseType: 'blob', // Important for creating a downloadable file
           });
           // Create a blob URL representing the data

@@ -5,7 +5,7 @@ import HomeView from '@/views/HomeView.vue'
 import DOMDashboard from '@/components/DOMDashboard.vue'
 import CIUDashboard from '@/components/CIUDashboard.vue'
 import FillRateDashboard from '@/components/FillRateDashboard.vue'
-import APPTimeReport from '@/components/APPTiimeReport.vue'
+import APPTimeReport from '@/components/APPTimeReport.vue'
 import ClinicFillDashboard from '@/components/ClinicFillDashboard' // Import the new component
 import SummaryDashboard from '@/components/SummaryDashboard.vue'
 import OOSDashboard from '@/components/OOSDashboard.vue'
