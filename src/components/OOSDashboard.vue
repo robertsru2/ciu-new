@@ -203,7 +203,7 @@ export default {
             filter_level: this.filterLevel
           };
           console.log(reportRequest)
-          const response = await axios.post('http://localhost:8000/dashboard-get-file-new/', reportRequest, {
+          const response = await axios.post('http://localhost:8000/dashboard-get-file/', reportRequest, {
             responseType: 'blob', // Important for creating a downloadable file
           });
           // Create a blob URL representing the data

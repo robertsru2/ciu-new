@@ -215,7 +215,7 @@ export default {
         filter_level: this.filterLevel
       };
       console.log(reportRequest)
-      const response = await axios.post('http://localhost:8000/dashboard-get-file/', reportRequest, {
+      const response = await axios.post('http://localhost:8000/dashboard-get-file-new/', reportRequest, {
         responseType: 'blob', // Important for creating a downloadable file
       });
       // Create a blob URL representing the data
@@ -224,7 +224,7 @@ export default {
       // Create a link element and programmatically click it to start the download
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', 'data.csv'); // Choose a suitable filename and extension
+      link.setAttribute('download', 'data.xlsx'); // Choose a suitable filename and extension
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
