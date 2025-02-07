@@ -105,6 +105,10 @@
         </div>
     </div>
     </div>
+    <div class="selection-string">
+      <p>Filter ID Value: {{ filterIDValue }}</p>
+      <p>Filter Level: {{ filterLevel }}</p>
+    </div>
   </div>
   </div>
 </template>

@@ -139,7 +139,7 @@ export default {
             include_prior_years: this.includePriorYears
           };
           const response = await axios.post('http://localhost:8000/neuro-psych-dashboard/', reportRequest);
-        console.log('Response Data:', response.data);
+          console.log('Response Data:', response.data);
 
         // Check if response.data is null or does not contain the html property
         if (!response.data) {

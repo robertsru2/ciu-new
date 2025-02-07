@@ -64,7 +64,7 @@
         <button type="button" class="btn btn-secondary" @click="downloadData">Download Data</button>
       </div>
     </form>
-    <div v-if="htmlResponse" v-html="htmlResponse"></div>
+    <div v-if="htmlResponse" v-html="htmlResponse" class="html-response"></div>
   </div>
 </template>
 
@@ -90,12 +90,19 @@ export default {
       selectedDepartment: 'DOM',
       selectedDivision: '',
       selectedProvider: '',
-      startDate: new Date(new Date().getFullYear(), 0, 1).toISOString().substr(0, 10),
-      endDate: (() => {
-        const date = new Date();
-        date.setMonth(date.getMonth() + 6);
-        return date.toISOString().substr(0, 10);
+      startDate: (() => {
+      const date = new Date();
+      const currentMonth = date.getMonth();
+      if (currentMonth < 6) {
+        // If the current month is before July, set the start date to July 1 of the previous year
+        date.setFullYear(date.getFullYear() - 1, 6, 1);
+      } else {
+        // If the current month is July or later, set the start date to 6 months earlier
+        date.setMonth(date.getMonth() - 6);
+      }
+      return date.toISOString().substr(0, 10);
       })(),
+      endDate: new Date().toISOString().substr(0, 10), // Set endDate to the current date
     };
   },
   async created() {
@@ -136,11 +143,11 @@ export default {
     formatResponse(data) {
       let html = '<table class="table table-striped">';
       html += '<thead><tr>';
-      html += '<th>Provider ID</th><th>Provider Name</th><th>Division</th><th>Month/Year</th><th>Period</th><th>Available Time</th><th>Extra Time</th><th>Expected Hours</th><th>Difference</th><th>Difference Percent</th><th>Department Level</th><th>Provider Category</th>';
+      html += '<th>Provider ID</th><th>Provider Name</th><th>Division</th><th>Month/Year</th><th>Period</th><th>Available Time</th><th>Extra Time</th><th>Expected Hours</th><th>Difference</th><th>Difference Percent</th><th>Department Level</th><th>Provider Category</th><th>cFTE</th><th>ExpectedHours</th><th>pay_period_ratio</th><th>Full_Time_Hours</th>';
       html += '</tr></thead><tbody>';
       data.forEach(row => {
         html += '<tr>';
-        html += `<td>${row.ProviderID}</td><td>${row.ProviderNM}</td><td>${row.DivisionNM}</td><td>${row.Month_Year}</td><td>${row.Period}</td><td>${row.Available_Time}</td><td>${row.Extra_Time}</td><td>${row.Exp_Hrs_PayPeriod}</td><td>${row.Difference}</td><td>${row.Difference_Percent}</td><td>${row.DepartmentLevel}</td><td>${row.ProviderCategory}</td>`;
+        html += `<td>${row.ProviderID}</td><td>${row.ProviderNM}</td><td>${row.DivisionNM}</td><td>${row.Month_Year}</td><td>${row.Period}</td><td>${row.Available_Time}</td><td>${row.Extra_Time}</td><td>${row.Exp_Hrs_PayPeriod}</td><td>${row.Difference}</td><td>${row.Difference_Percent}</td><td>${row.DepartmentLevel}</td><td>${row.ProviderCategory}</td><td>${row.cFTE}</td><td>${row.ExpectedHours}</td><td>${row.pay_period_ratio}</td><td>${row.Full_Time_Hours}</td>`;
         html += '</tr>';
       });
       html += '</tbody></table>';
@@ -206,6 +213,12 @@ export default {
   },
   async downloadData() {
     try {
+      // check to ensure that the filterIDValue and filterLevel are set and not empty. 
+      // If they are empty, display an alert message to the user and return early from the method.
+      if (!this.filterIDValue || !this.filterLevel) {
+        alert('Please select at least one department, division, or provider before downloading data.');
+        return;
+      }
       console.log('APP downloadData method called')
       const reportRequest = {
         startDate: this.startDate,
@@ -224,7 +237,7 @@ export default {
       // Create a link element and programmatically click it to start the download
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', 'data.xlsx'); // Choose a suitable filename and extension
+      link.setAttribute('download', 'APP_Data.xlsx'); // Choose a suitable filename and extension
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -257,5 +270,11 @@ export default {
   justify-content: space-between; /* Evenly space the buttons horizontally */
   align-items: center; /* Align items vertically in the center */
   gap: 10px; /* Add some space between the buttons */
+}
+.html-response {
+  max-height: 400px; /* Set a maximum height for the container */
+  max-width: 100%; /* Set a maximum width for the container */
+  overflow: auto; /* Enable both horizontal and vertical scrolling */
+  margin-top: 20px;
 }
 </style>

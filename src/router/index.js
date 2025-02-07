@@ -9,7 +9,7 @@ import APPTimeReport from '@/components/APPTimeReport.vue'
 import ClinicFillDashboard from '@/components/ClinicFillDashboard' // Import the new component
 import SummaryDashboard from '@/components/SummaryDashboard.vue'
 import OOSDashboard from '@/components/OOSDashboard.vue'
-import BudgetToActual from '@/components/BudgetToActual.vue'
+import ActualToBudget from '@/components/ActualToBudget.vue'
 import NeuroPsychHours from '@/components/NeuroPsychHours.vue'
 import BlockReport from '@/components/BlockReport.vue'
 import DOWVisitsDashboard from '@/components/DOWVisitsDashboard.vue'
@@ -33,7 +33,7 @@ const routes = [
   { path: '/app-time-report', name: 'APPTimeReport', component: APPTimeReport },
   { path: '/summary-dashboard', name: 'SummaryDashboard', component: SummaryDashboard },
   { path: '/oos-dashboard', name: 'OOSDashboard', component: OOSDashboard },
-  { path: '/budget-to-actual', name: 'BudgetToActual', component: BudgetToActual },
+  { path: '/actual-to-budget', name: 'ActualToBudget', component: ActualToBudget },
   { path: '/neuropsych-hours', name: 'NeuroPsychHours', component: NeuroPsychHours },
   { path: '/get_block_data', name: 'BlockReport', component: BlockReport },
   { path: '/dow-visits-dashboard', name: 'DOWVisitsDashboard', component: DOWVisitsDashboard },

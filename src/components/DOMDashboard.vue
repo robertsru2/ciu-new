@@ -12,7 +12,7 @@
         <div> <router-link :to="{ name: 'ClinicFillDashboard' }">2-Week Clinic Fill Dashboard</router-link> </div>         
         <div> <router-link :to="{ name: 'OOSDashboard' }">Out of State Dashboard</router-link> </div>
         <div> <router-link :to="{ name: 'APPTimeReport' }">APP Time Dashboard</router-link> </div> 
-        <div> <router-link :to="{ name: 'BudgetToActual' }">Budget to Actual Dashboard</router-link></div>
+        <div> <router-link :to="{ name: 'ActualToBudget' }">Actual to Budget Dashboard</router-link></div>
         <div> <router-link :to="{ name: 'NeuroPsychHours' }">Neuro Psychology Hours</router-link></div>
         <div> <router-link :to="{ name: 'BlockReport' }">Provider Block Time Report</router-link></div>
         <div> <router-link :to="{ name: 'DOWVisitsDashboard' }">Day of Week Dashboard</router-link></div>
