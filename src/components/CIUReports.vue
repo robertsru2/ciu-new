@@ -78,6 +78,9 @@
           <progress :value="progress1.current" :max="progress1.total"></progress>
           <p>{{ progress1.current }} / {{ progress1.total }}</p>
         </div>
+        <div v-if="isLoading" class="loading-spinner">
+            <img src="../assets/loading-spinner.gif" alt="Loading..." class="scaled">
+        </div>
         <b-button @click="createReports" variant="primary">Create Reports</b-button>
         <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
       </div>
@@ -149,6 +152,7 @@ import 'vue-multiselect/dist/vue-multiselect.min.css'
         errorMessage: '',
         filterIDValue: 'DOM',
         filterLevel: 'DepartmentLevel',       // DepartmentLevel, DivisionNM, ProviderID
+        isLoading: false,
       }
     },
     async created() {
@@ -241,7 +245,6 @@ import 'vue-multiselect/dist/vue-multiselect.min.css'
             }
 
             this.socket = new WebSocket('ws://localhost:8000/create-reports');
-
             this.socket.onopen = () => {
             // Build the filterIDValue and filterLevel based on the selected departments, divisions, and providers
             if (this.selectedDepartments.length > 0) {
@@ -273,6 +276,7 @@ import 'vue-multiselect/dist/vue-multiselect.min.css'
             } 
             console.log('Filter ID Value:', this.filterIDValue);
             console.log('Filter Level:', this.filterLevel);
+            this.isLoading = true;
             const reportRequest = {
                 action: 'createReports',
                 startDate: this.startDate,
@@ -300,6 +304,7 @@ import 'vue-multiselect/dist/vue-multiselect.min.css'
             console.log('WebSocket connection closed');
             this.loadFiles();
             };
+            this.isLoading = false;
         },
         printReports() {
             if (this.socket2) {
@@ -454,5 +459,16 @@ import 'vue-multiselect/dist/vue-multiselect.min.css'
 
 .progress-bar-container {
   margin-top: 20px;
+}
+.loading-spinner {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+}
+.scaled {
+  transform: scale(0.5); /* Scale down to 80% of the original size */
+  transform-origin: center; /* Ensure scaling is centered */
 }
 </style>

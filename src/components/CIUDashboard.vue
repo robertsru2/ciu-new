@@ -46,6 +46,9 @@
             <progress :value="progress.current" :max="progress.total"></progress>
             <p>{{ progress.current }} / {{ progress.total }}</p>
           </div>
+          <div v-if="isLoading" class="loading-spinner">
+            <img src="../assets/loading-spinner.gif" alt="Loading..." class="scaled">
+          </div>
           <div class = "download-button">
             <!-- Add a button that triggers the download when clicked -->
             <button class="b-button" @click="downloadData">Download Data</button>      
@@ -85,6 +88,7 @@ export default {
       progress: { current: 0, total: 0, step: 'Report Creation Progress Bar' },
       imageName: '',
       includePriorYears: true,
+      isLoading: false,
     }
   },
    computed: {
@@ -162,7 +166,7 @@ export default {
         }
 
         this.socket = new WebSocket('ws://localhost:8000/dashboard-run-report');
-
+        this.isLoading = true;
         this.socket.onopen = () => {
           const reportRequest = {
             startDate: this.startDate,
@@ -194,6 +198,7 @@ export default {
         this.socket.onclose = () => {
           console.log('WebSocket connection closed');
         };
+        this.isLoading = false;
       },
       async downloadData() {
         try {
@@ -347,5 +352,16 @@ export default {
 }
 .red-text {
   color: red;
+}
+.loading-spinner {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+}
+.scaled {
+  transform: scale(0.5); /* Scale down to 80% of the original size */
+  transform-origin: center; /* Ensure scaling is centered */
 }
 </style>

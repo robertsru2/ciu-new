@@ -33,6 +33,13 @@
             <progress :value="progress.current" :max="progress.total"></progress>
             <p>{{ progress.current }} / {{ progress.total }}</p>
           </div>
+          <div v-if="isLoading" class="loading-spinner">
+            <img src="../assets/loading-spinner.gif" alt="Loading..." class="scaled">
+          </div>
+          <div class = "download-button">
+            <!-- Add a button that triggers the download when clicked -->
+            <button class="b-button" @click.stop="downloadData">Download Data</button>      
+          </div>
         </div>
       </div>
     </div>
@@ -60,6 +67,7 @@ export default {
       progress: { current: 0, total: 0, step: 'Report Creation Progress Bar' },
       imageUrls: [],
       includePriorYears: true,
+      isLoading: false,
     };
   },
     computed: {
@@ -95,6 +103,7 @@ export default {
     },
     async createReport() {
       try {
+        this.isLoading = true;
         const reportRequest = {
           startDate: this.startDate,
           endDate: this.endDate,
@@ -122,8 +131,37 @@ export default {
         console.error('Failed to create report:', error);
         this.progress.step = 'Failed to Create Report';
       }
+      this.isLoading = false;
     }
-  }
+  },
+    async downloadData() {
+    try {
+      console.log('ActualToBudget downloadData method called')
+      const reportRequest = {
+        startDate: this.startDate,
+        endDate: this.endDate,
+        action: 'ActualToBudgetDownload',
+        filter_id_value: this.filterIDValue,
+        filter_level: this.filterLevel
+      };
+      console.log(reportRequest)
+      const response = await axios.post('http://localhost:8000/dashboard-get-file/', reportRequest, {
+        responseType: 'blob', // Important for creating a downloadable file
+      });
+      // Create a blob URL representing the data
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+
+      // Create a link element and programmatically click it to start the download
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'Actual_Budget_data.csv'); // Choose a suitable filename and extension
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Failed to download data:', error);
+    }
+  },
 }
 </script>
 
@@ -246,5 +284,16 @@ export default {
 }
 .red-text {
   color: red;
+}
+.loading-spinner {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+}
+.scaled {
+  transform: scale(0.5); /* Scale down to 80% of the original size */
+  transform-origin: left; /* Ensure scaling is centered */
 }
 </style>
