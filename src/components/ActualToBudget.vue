@@ -30,9 +30,7 @@
           </div>
           <div class="progress-bar-container">
             <p :class="{ 'red-text': progress.step === 'API Server Down' }">{{ progress.step }}</p>
-            <progress :value="progress.current" :max="progress.total"></progress>
-            <p>{{ progress.current }} / {{ progress.total }}</p>
-          </div>
+            </div>
           <div v-if="isLoading" class="loading-spinner">
             <img src="../assets/loading-spinner.gif" alt="Loading..." class="scaled">
           </div>
@@ -64,7 +62,7 @@ export default {
       endDate: new Date().toISOString().substr(0, 10),
       filterIDValue: 'DOM',
       filterLevel: 'DepartmentLevel',
-      progress: { current: 0, total: 0, step: 'Report Creation Progress Bar' },
+      progress: { current: 0, total: 0, step: 'API Server is Up' },
       imageUrls: [],
       includePriorYears: true,
       isLoading: false,
@@ -231,11 +229,7 @@ export default {
 
 .progress-container {
   margin-left: 200px; /* Adjust this value as needed */
-}
-
-.button-container {
-  display: flex;
-  justify-content: space-between; /* Or use 'space-around' */
+  margin-right: 200px; /* Adjust this value as needed */
 }
 
 .image-container {
@@ -246,13 +240,24 @@ export default {
   display: flex;
   flex-direction: row;
   align-items: center; /* This will left-align the children */
+  justify-content: space-between; /* Ensure even spacing between children */
+  padding: 0 1rem; /* Add padding to the left and right */
 }
 
 .button-container {
+  display: flex;
+  justify-content: space-between; /* Or use 'space-around' */
   margin-bottom: 1rem; /* Add some space between the button and the progress bar */
   padding-left: 3rem; /* Add padding to the left side of the button */
   margin-right: 5rem; /* Add some space between the button and the progress bar */  
 }
+
+.progress-bar-container {
+  flex-grow: 1; /* Allow the progress bar container to grow and take available space */
+  text-align: center; /* Center the text within the container */
+  padding: 0 1rem; /* Add padding to the left and right */
+}
+
 .container {
   display: flex;
   flex-direction: column;
