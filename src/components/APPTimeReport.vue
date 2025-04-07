@@ -103,6 +103,7 @@ export default {
       return date.toISOString().substr(0, 10);
       })(),
       endDate: new Date().toISOString().substr(0, 10), // Set endDate to the current date
+      progress: { step: '' }, // Define the progress property
     };
   },
   async created() {

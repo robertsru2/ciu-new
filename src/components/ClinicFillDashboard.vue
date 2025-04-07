@@ -177,6 +177,7 @@ export default {
               filter_level: this.filterLevel,
               include_prior_years: this.includePriorYears
           };
+          console.log(reportRequest)
           this.socket.send(JSON.stringify(reportRequest));
           };
 

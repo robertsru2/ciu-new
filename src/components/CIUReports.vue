@@ -1,7 +1,6 @@
 <template>
   <div>
     <h1>CIU Reports</h1>
-    <p>Clinical Information Update Reports Page.</p>
     <div class="container">
       <div class="report-creation">
         <div class="date-container">
