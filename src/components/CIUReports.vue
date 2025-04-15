@@ -302,8 +302,9 @@ import 'vue-multiselect/dist/vue-multiselect.min.css'
             this.socket.onclose = () => {
             console.log('WebSocket connection closed');
             this.loadFiles();
-            };
             this.isLoading = false;
+            };
+            
         },
         printReports() {
             if (this.socket2) {
