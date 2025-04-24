@@ -38,7 +38,7 @@
             <button class="b-button" @click.stop="downloadData">Download Data</button>
           </div>
           <div class="print-button">
-            <button class="b-button" @click="printToPDF" :disabled="imageUrls.length === 0 && !tableData">Print to PDF</button> 
+            <button class="b-button" @click="printToPDF">Print to PDF</button> 
           </div>
         </div> 
       </div> 
@@ -98,6 +98,7 @@ export default {
       divisions: [],
       selectedDepartment: '',
       selectedDivision: '',
+      tableData: null,
       startDate: '2023-07-01',
       endDate: new Date().toISOString().substr(0, 10),
       filterIDValue: 'DOM',
@@ -224,7 +225,7 @@ export default {
   },
     // --- Helper function to add Header, Sub-Heading, and Footer ---
     addHeaderFooter(doc, pageNumber, totalPages, logoDataUrl, logoImg, filterLevel, filterIDValue, startDate, endDate) {
-        const pageHeight = doc.internal.pageSize.getHeight();
+        // Removed unused variable 'pageHeight'
         const pageWidth = doc.internal.pageSize.getWidth();
         const margin = 40;
         let currentHeaderY = margin; // Start Y position for header content
@@ -255,22 +256,12 @@ export default {
         doc.text(subHeadingText, (pageWidth - subHeadingWidth) / 2, currentHeaderY); // Center horizontally
         currentHeaderY += 25; // Space after sub-heading
 
-        // --- Footer ---
-        const printDateTime = new Date().toLocaleString();
-        doc.setFontSize(9);
-        doc.setFont(undefined, 'normal');
-        const footerY = pageHeight - margin / 2;
-        doc.text(printDateTime, margin, footerY, { align: 'left' });
-        const pageNumText = `Page ${pageNumber} of ${totalPages}`;
-        doc.text(pageNumText, pageWidth - margin, footerY, { align: 'right' });
-
         return currentHeaderY; // Return the Y position after the header AND sub-heading content
     },
-    // --- End Helper ---
-
 
     async printToPDF() {
       // --- Initial Checks & Loading ---
+      console.log('printToPDF method called');
       if (this.imageUrls.length === 0 && !this.tableData) {
         this.isLoading = true;
         console.log('No content to print. Creating report...');
@@ -339,7 +330,7 @@ export default {
                 }
 
                 const imgX = (pageWidth - imgWidth) / 2; // Center horizontally
-                doc.addImage(imgData, 'PNG', imgX, currentY, imgWidth, imgHeight);
+                doc.addImage(imgData, 'JPEG', imgX, currentY, imgWidth, imgHeight, undefined, 'FAST'); // 'FAST' typically gives best compression
                 currentY += imgHeight + 15; // Update Y position, add smaller spacing before table
             } else {
                  console.log("First image data could not be loaded.");
@@ -391,15 +382,19 @@ export default {
                          data.cell.styles.fillColor = [248, 249, 250];
                     }
                 },
-                margin: { left: margin, right: margin }, // Ensures table aligns with contentWidth
-                // Callback to add headers/footers to pages added BY autoTable
-                didDrawPage: (data) => {
-                    // Add header/footer only to pages added by autoTable (pageNumber > 1 initially)
-                    // Note: data.pageNumber is the number of the page *just drawn*
-                    if (data.pageNumber > 1) {
-                         this.addHeaderFooter(doc, data.pageNumber, totalPages, logoDataUrl, logoImg, this.filterLevel, this.filterIDValue, this.startDate, this.endDate);
-                    }
-                }
+                margin: {
+                    left: margin,
+                    right: margin,
+                    top: margin, // Keep top margin if needed for safety
+                    bottom: margin + footerHeight // Ensure table stops above footer area
+                 },
+                // Remove or comment out the didDrawPage that adds header/footer
+                // didDrawPage: (data) => {
+                //     // We will draw footers only once at the end
+                //     // if (data.pageNumber > 1) {
+                //     //      this.addHeaderFooter(doc, data.pageNumber, totalPages, logoDataUrl, logoImg, this.filterLevel, this.filterIDValue, this.startDate, this.endDate);
+                //     // }
+                // }
             });
 
             currentY = doc.lastAutoTable.finalY + 20; // Update Y position after table
@@ -424,68 +419,72 @@ export default {
 
 
         for (let i = 1; i < this.imageUrls.length; i++) {
-            const imgUrl = this.imageUrls[i];
-            if (!imgUrl) continue;
+            const indexWithinPair = (i - 1) % imagesPerPage;
 
-            const indexWithinPair = (i - 1) % imagesPerPage; // 0 or 1
-
-            // Add new page only for the first image of a pair
+            // Add new page and header only for the first image of a pair, or if starting fresh
             if (indexWithinPair === 0) {
-                // Add page if it's the first image OR if we decided to start fresh after the table
                 if (i > 1 || startNewPageForImages) {
                     doc.addPage();
                     currentPage++;
+                    // 1. Add header/sub-header, get Y position *below* them
                     currentY = this.addHeaderFooter(doc, currentPage, totalPages, logoDataUrl, logoImg, this.filterLevel, this.filterIDValue, this.startDate, this.endDate);
                 } else {
-                    // Continue on the page where the table finished
+                    // Continue on the page where the table finished, Y position is already set
                     currentY = imageLoopStartY;
                 }
             }
 
-            const imgData = await this.getImageDataUrl(imgUrl);
+            const imgData = await this.getImageDataUrl(this.imageUrls[i]);
             if (imgData) {
                 const imgProps = doc.getImageProperties(imgData);
                 const ratio = imgProps.width / imgProps.height;
 
-                // Calculate available space per image on these pages
-                const pageImageContentHeight = pageHeight - headerAndSubHeadingHeightEstimate - margin - footerHeight;
-                const rowHeight = pageImageContentHeight / imagesPerPage;
-                const cellPadding = 15;
-                const maxCellWidth = contentWidth - 2 * cellPadding;
-                const maxCellHeight = rowHeight - 2 * cellPadding;
+                // Calculate max height for the first image (e.g., 70% of available space)
+                const maxImageHeight = availablePageHeight * 0.70; // Adjusted percentage
 
                 let imgRenderWidth = imgProps.width;
                 let imgRenderHeight = imgProps.height;
 
-                // Scale image
-                if (imgRenderWidth > maxCellWidth) { imgRenderWidth = maxCellWidth; imgRenderHeight = imgRenderWidth / ratio; }
-                if (imgRenderHeight > maxCellHeight) { imgRenderHeight = maxCellHeight; imgRenderWidth = imgRenderHeight * ratio; }
-
-                // Calculate position
-                const pageImageStartY = headerAndSubHeadingHeightEstimate + margin; // Y where images start on any page *after* header
-                const cellY = pageImageStartY + indexWithinPair * rowHeight; // Position based on 0 or 1 index
-                const imgX = (pageWidth - imgRenderWidth) / 2; // Center horizontally
-                const imgY = cellY + (rowHeight - imgRenderHeight) / 2; // Center vertically within the row
-
-                doc.addImage(imgData, 'PNG', imgX, imgY, imgRenderWidth, imgRenderHeight);
-                // Update currentY after the second image of a pair is placed
-                if (indexWithinPair === 1) {
-                    currentY = imgY + imgRenderHeight + 20;
+                // Scale image to fit width first
+                if (imgRenderWidth > contentWidth) {
+                    imgRenderWidth = contentWidth;
+                    imgRenderHeight = imgRenderWidth / ratio;
                 }
+                // Then scale down further if it exceeds max height
+                if (imgRenderHeight > maxImageHeight) {
+                    imgRenderHeight = maxImageHeight;
+                    imgRenderWidth = imgRenderHeight * ratio;
+                }
+
+                // 2. Calculate Y position for the image content area *below* the header
+                const pageImageContentStartY = headerAndSubHeadingHeightEstimate + margin; // Y where content starts below header
+                const pageImageContentHeight = pageHeight - pageImageContentStartY - margin - footerHeight;
+                const rowHeight = pageImageContentHeight / imagesPerPage;
+
+                // 3. Calculate the specific Y position for this image within its row, below the header
+                const cellY = pageImageContentStartY + indexWithinPair * rowHeight;
+                const imgX = (pageWidth - imgRenderWidth) / 2;
+                const imgY = cellY + (rowHeight - imgRenderHeight) / 2; // Positioned relative to pageImageContentStartY
+
+                // 4. Add the image at the calculated X, Y (which is in the body)
+                doc.addImage(imgData, 'JPEG', imgX, imgY, imgRenderWidth, imgRenderHeight, undefined, 'FAST'); // 'FAST' typically gives best compression
+
+                // ... (update currentY logic) ...
             }
         }
 
         // --- Final Footer Update ---
         totalPages = doc.internal.getNumberOfPages(); // Get the final page count
+        const finalPrintDateTime = new Date().toLocaleString(); // Get consistent time for all footers
         for (let i = 1; i <= totalPages; i++) {
           doc.setPage(i);
-          // Re-draw the footer with the correct total pages
+          // Draw the footer cleanly
           doc.setFontSize(9);
           doc.setFont(undefined, 'normal');
           const footerY = pageHeight - margin / 2;
           const pageNumText = `Page ${i} of ${totalPages}`;
-          const printDateTime = new Date().toLocaleString();
-          doc.text(printDateTime, margin, footerY, { align: 'left' });
+          // Draw text - this should not overlap now
+          doc.text(finalPrintDateTime, margin, footerY, { align: 'left' });
           doc.text(pageNumText, pageWidth - margin, footerY, { align: 'right' });
         }
 
