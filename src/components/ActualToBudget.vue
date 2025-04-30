@@ -779,19 +779,7 @@ export default {
   overflow: hidden;
 }
 
-/* ... other existing styles ... */
 .red-text {
   color: #dc3545; /* Standard Bootstrap danger color */
 }
-
-.loading-spinner {
-  /* ... existing styles ... */
-}
-.scaled {
- /* ... existing styles ... */
-}
-.print-button {
- /* ... existing styles ... */
-}
-
 </style>
