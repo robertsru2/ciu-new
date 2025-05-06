@@ -1,7 +1,7 @@
 <template>
   <div class="container">
     <div class="header">
-      <img class="logo" alt="National Jewish Health" src="../assets/NJ_Logo.png">
+      <img class="logo" alt="National Jewish Health" src="../assets/NJ_Logo.png" ref="logoImage" style="display: none;">
       <div class="multiselect-container">
         <h2 class="page-heading">{{ pageHeading }}</h2>
         <div class="date-inputs">
@@ -47,10 +47,11 @@
         <progress :value="progress.current" :max="progress.total"></progress>
         <p>{{ progress.current }} / {{ progress.total }}</p>
       </div>
-      <div class = "download-button">
-      <!-- Add a button that triggers the download when clicked -->
-        <button class="b-button" @click="downloadData">Download Data</button>      
-     </div>
+      <div class="button-group">
+        <!-- Add a button that triggers the download when clicked -->
+        <button class="b-button" @click="downloadData">Download Data</button>
+        <button class="b-button" @click="printToPDF">Print to PDF</button>
+      </div>
 
     </div>
   </div>
@@ -67,6 +68,7 @@
 </template>
 <script>
 import axios from 'axios';
+import { jsPDF } from "jspdf";
 
 export default {
   data() {
@@ -234,6 +236,137 @@ export default {
           console.error('Failed to download data:', error);
         }
         },
+        async printToPDF() {
+          console.log('printToPDF method called');
+          if (!this.imageName) {
+            console.log('No image to print. Creating report...');
+            await this.createReport();
+            if (!this.imageName) {
+              console.error("Still no image to print after report creation.");
+              return;
+            }
+          }
+    
+          try {
+            const doc = new jsPDF('p', 'pt', 'letter');
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const margin = 40;
+            const footerHeight = 40;
+    
+            // Load logo
+            const logoImg = this.$refs.logoImage;
+            let logoDataUrl = '';
+            if (logoImg && logoImg.src) {
+              try {
+                const response = await fetch(logoImg.src);
+                const blob = await response.blob();
+                logoDataUrl = await new Promise((resolve, reject) => {
+                  const reader = new FileReader();
+                  reader.onloadend = () => resolve(reader.result);
+                  reader.onerror = reject;
+                  reader.readAsDataURL(blob);
+                });
+              } catch (e) { 
+                console.error("Error loading logo image:", e); 
+              }
+            }
+    
+            // Add header with logo and title
+            let currentY = margin;
+            const logoWidth = 80;
+            const logoHeight = logoImg ? (logoImg.naturalHeight / logoImg.naturalWidth) * logoWidth : 40;
+            
+            // Add logo on the left
+            if (logoDataUrl) {
+              doc.addImage(logoDataUrl, 'PNG', margin, currentY, logoWidth, logoHeight);
+            }
+            
+            // Add title centered on the same line
+            const title = "Day of Week Dashboard";
+            doc.setFontSize(20);
+            doc.setFont(undefined, 'bold');
+            const titleWidth = doc.getTextWidth(title);
+            doc.text(title, (pageWidth - titleWidth) / 2, currentY + logoHeight / 2 + 10);
+            
+            currentY += logoHeight + 20;
+            
+            // Add subheading
+            doc.setFontSize(16);
+            const subheading = `${this.filterLevel} = ${this.filterIDValue} | Date Range: ${this.startDate} To ${this.endDate}`;
+            const subheadingWidth = doc.getTextWidth(subheading);
+            doc.text(subheading, (pageWidth - subheadingWidth) / 2, currentY);
+            
+            currentY += 40; // Skip two lines
+            
+            // Add image
+            const imageData = await this.getImageDataUrl(this.imageName);
+            if (imageData) {
+              const imgProps = doc.getImageProperties(imageData);
+              const ratio = imgProps.width / imgProps.height;
+              
+              // Calculate image dimensions to fit the page
+              const maxWidth = pageWidth - 2 * margin;
+              const maxHeight = pageHeight - currentY - footerHeight - margin;
+              
+              let imgWidth = imgProps.width;
+              let imgHeight = imgProps.height;
+              
+              // Scale to fit width
+              if (imgWidth > maxWidth) {
+                imgWidth = maxWidth;
+                imgHeight = imgWidth / ratio;
+              }
+              
+              // Scale to fit height if needed
+              if (imgHeight > maxHeight) {
+                imgHeight = maxHeight;
+                imgWidth = imgHeight * ratio;
+              }
+              
+              // Center the image horizontally
+              const imgX = (pageWidth - imgWidth) / 2;
+              doc.addImage(imageData, 'JPEG', imgX, currentY, imgWidth, imgHeight, undefined, 'FAST');
+            }
+            
+            // Add footer
+            const footerY = pageHeight - margin / 2;
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'normal');
+            
+            // Left-aligned date/time
+            const dateTime = new Date().toLocaleString();
+            doc.text(dateTime, margin, footerY);
+            
+            // Right-aligned page number
+            const pageText = `Page 1 of 1`;
+            doc.text(pageText, pageWidth - margin, footerY, { align: 'right' });
+            
+            // Save the PDF
+            doc.save('DOW_Visits_Dashboard.pdf');
+            
+          } catch (error) {
+            console.error('Failed to generate PDF:', error);
+          }
+        },
+        
+        // Helper function to fetch image and convert to Data URL
+        async getImageDataUrl(url) {
+          try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
+            const blob = await response.blob();
+            return new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+          } catch (error) {
+            console.error(`Error loading image ${url}:`, error);
+            return null;
+          }
+        }
       }
     }
 
@@ -361,5 +494,22 @@ export default {
 }
 .red-text {
   color: red;
+}
+.button-group {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-left: 200px;
+  margin-bottom: 1rem;
+  padding-left: 3rem;
+  margin-right: 5rem;
+}
+
+/* Hide the duplicate logo used for PDF generation */
+img[style*="display: none"] {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
 }
 </style>
