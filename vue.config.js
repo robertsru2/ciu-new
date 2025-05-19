@@ -9,8 +9,20 @@ module.exports = defineConfig({
         '__VUE_OPTIONS_API__': true,
         '__VUE_PROD_DEVTOOLS__': false,
         '__VUE_PROD_HYDRATION_MISMATCH_DETAILS__': false
+      }),
+      // Provide polyfills for Node.js core modules
+      new webpack.ProvidePlugin({
+        Buffer: ['buffer', 'Buffer'],
+        process: 'process/browser'
       })
-    ]
+    ],
+    resolve: {
+      fallback: {
+        stream: require.resolve('stream-browserify'),
+        buffer: require.resolve('buffer/'),
+        process: require.resolve('process/browser')
+      }
+    }
   },
   devServer: {  // Add this section for the proxy
     proxy: {

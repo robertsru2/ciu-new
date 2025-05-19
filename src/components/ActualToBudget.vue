@@ -267,230 +267,246 @@ export default {
         console.log('No content to print. Creating report...');
         await this.createReport();
         if (this.imageUrls.length === 0 && !this.tableData) {
-            console.error("Still no content to print after report creation.");
-            this.isLoading = false;
-            return;
+          console.error("Still no content to print after report creation.");
+          this.isLoading = false;
+          return;
         }
       }
       this.isLoading = true;
 
       try {
+        // Create PDF document
         const doc = new jsPDF('p', 'pt', 'letter');
         const pageHeight = doc.internal.pageSize.getHeight();
         const pageWidth = doc.internal.pageSize.getWidth();
         const margin = 40;
-        const footerHeight = 40; // Space reserved for footer
+        const footerHeight = 40;
         const contentWidth = pageWidth - 2 * margin;
+        //const contentHeight = pageHeight - 2 * margin - footerHeight;
 
         // --- Load Logo ---
         const logoImg = this.$refs.logoImage;
         let logoDataUrl = '';
-         if (logoImg && logoImg.src) {
-           try {
-             const response = await fetch(logoImg.src);
-             const blob = await response.blob();
-             logoDataUrl = await new Promise((resolve, reject) => {
-               const reader = new FileReader();
-               reader.onloadend = () => resolve(reader.result);
-               reader.onerror = reject;
-               reader.readAsDataURL(blob);
-             });
-           } catch (e) { console.error("Error loading logo image:", e); }
-        }
-
-        // --- Page 1 Setup ---
-        let currentPage = 1;
-        let totalPages = 1; // Placeholder, updated at the end
-        let currentY = this.addHeaderFooter(doc, currentPage, totalPages, logoDataUrl, logoImg, this.filterLevel, this.filterIDValue, this.startDate, this.endDate);
-
-        const availablePageHeight = pageHeight - currentY - margin - footerHeight; // Usable height below header
-
-        // --- Page 1 Body (First Image) ---
-        if (this.imageUrls.length > 0) {
-            const imgData = await this.getImageDataUrl(this.imageUrls[0]);
-            if (imgData) {
-                const imgProps = doc.getImageProperties(imgData);
-                const ratio = imgProps.width / imgProps.height;
-
-                // Calculate max height for the first image (e.g., 70% of available space)
-                const maxImageHeight = availablePageHeight * 0.70; // Adjusted percentage
-
-                let imgWidth = imgProps.width;
-                let imgHeight = imgProps.height;
-
-                // Scale image to fit width first
-                if (imgWidth > contentWidth) {
-                    imgWidth = contentWidth;
-                    imgHeight = imgWidth / ratio;
-                }
-                // Then scale down further if it exceeds max height
-                if (imgHeight > maxImageHeight) {
-                    imgHeight = maxImageHeight;
-                    imgWidth = imgHeight * ratio;
-                }
-
-                const imgX = (pageWidth - imgWidth) / 2; // Center horizontally
-                doc.addImage(imgData, 'JPEG', imgX, currentY, imgWidth, imgHeight, undefined, 'FAST'); // 'FAST' typically gives best compression
-                currentY += imgHeight + 15; // Update Y position, add smaller spacing before table
-            } else {
-                 console.log("First image data could not be loaded.");
-                 // currentY += 20; // Add space even if no image
-            }
-        } else {
-             console.log("First image not found or imageUrls is empty.");
-             // currentY += 20; // Add space even if no image
-        }
-
-        // --- Add Table using autoTable (Starts on Page 1, below image) ---
-        if (this.tableData) {
-            const head = [['', ...this.tableData.columns]];
-            const body = this.tableData.rows.map((rowLabel, rowIndex) => {
-                return [rowLabel, ...this.tableData.cell_data[rowIndex]];
+        if (logoImg && logoImg.src) {
+          try {
+            const response = await fetch(logoImg.src);
+            const blob = await response.blob();
+            logoDataUrl = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
             });
-
-            // No pre-emptive page break here. Let autoTable handle breaks if needed.
-            const tableStartY = currentY;
-
-            autoTable(doc, {
-                head: head,
-                body: body,
-                startY: tableStartY, // Start table right after the image
-                theme: 'grid',
-                styles: { fontSize: 8, cellPadding: 4, overflow: 'linebreak' },
-                headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41], fontStyle: 'bold', halign: 'center', lineWidth: 0.5, lineColor: [222, 226, 230] },
-                bodyStyles: { lineWidth: 0.5, lineColor: [222, 226, 230] },
-                columnStyles: {
-                    0: { fontStyle: 'bold', halign: 'left', fillColor: [248, 249, 250] },
-                    1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' },
-                    5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' },
-                    9: { halign: 'right' }, 10: { halign: 'right' } // Adjust if more/fewer columns
-                },
-                didParseCell: (data) => {
-                    // Apply font color
-                    if (data.section === 'body' && data.column.index > 0) {
-                        const rowIndex = data.row.index;
-                        const colIndex = data.column.index - 1;
-                        if (this.tableData.cell_colors?.[rowIndex]?.[colIndex]) {
-                            const color = this.tableData.cell_colors[rowIndex][colIndex];
-                            data.cell.styles.textColor = (color === 'red') ? [220, 53, 69] : [33, 37, 41];
-                        }
-                    }
-                    // Style row headers
-                    if (data.section === 'body' && data.column.index === 0) {
-                         data.cell.styles.fontStyle = 'bold';
-                         data.cell.styles.halign = 'left';
-                         data.cell.styles.fillColor = [248, 249, 250];
-                    }
-                },
-                margin: {
-                    left: margin,
-                    right: margin,
-                    top: margin, // Keep top margin if needed for safety
-                    bottom: margin + footerHeight // Ensure table stops above footer area
-                 },
-                // Remove or comment out the didDrawPage that adds header/footer
-                // didDrawPage: (data) => {
-                //     // We will draw footers only once at the end
-                //     // if (data.pageNumber > 1) {
-                //     //      this.addHeaderFooter(doc, data.pageNumber, totalPages, logoDataUrl, logoImg, this.filterLevel, this.filterIDValue, this.startDate, this.endDate);
-                //     // }
-                // }
-            });
-
-            currentY = doc.lastAutoTable.finalY + 20; // Update Y position after table
-            currentPage = doc.internal.pages.length; // Update current page count
-        } else {
-            console.log("No table data to add to PDF.");
+          } catch (e) { console.error("Error loading logo image:", e); }
         }
 
-        // --- Subsequent Pages (Remaining Images - 2 per page) ---
-        const imagesPerPage = 2;
-        const headerAndSubHeadingHeightEstimate = 110; // Keep estimate for subsequent pages
-
-        // Determine starting page and Y for subsequent images
-        let imageLoopStartY = headerAndSubHeadingHeightEstimate + margin; // Default start Y on a new page
-        let startNewPageForImages = true; // Assume we need a new page unless table finished exactly at bottom
-
-        // Check if there's significant space left on the page where the table finished
-        if (currentY < pageHeight - margin - footerHeight - 100) { // If > 100pts space left
-            startNewPageForImages = false; // Continue on the current page
-            imageLoopStartY = currentY; // Start images after the table on the same page
-        }
-
-
-        for (let i = 1; i < this.imageUrls.length; i++) {
-            const indexWithinPair = (i - 1) % imagesPerPage;
-
-            // Add new page and header only for the first image of a pair, or if starting fresh
-            if (indexWithinPair === 0) {
-                if (i > 1 || startNewPageForImages) {
-                    doc.addPage();
-                    currentPage++;
-                    // 1. Add header/sub-header, get Y position *below* them
-                    currentY = this.addHeaderFooter(doc, currentPage, totalPages, logoDataUrl, logoImg, this.filterLevel, this.filterIDValue, this.startDate, this.endDate);
-                } else {
-                    // Continue on the page where the table finished, Y position is already set
-                    currentY = imageLoopStartY;
-                }
-            }
-
+        // --- Preprocess all images ---
+        const processedImages = [];
+        for (let i = 0; i < this.imageUrls.length; i++) {
+          try {
+            // Get image data
             const imgData = await this.getImageDataUrl(this.imageUrls[i]);
-            if (imgData) {
-                const imgProps = doc.getImageProperties(imgData);
-                const ratio = imgProps.width / imgProps.height;
-
-                // Calculate max height for the first image (e.g., 70% of available space)
-                const maxImageHeight = availablePageHeight * 0.70; // Adjusted percentage
-
-                let imgRenderWidth = imgProps.width;
-                let imgRenderHeight = imgProps.height;
-
-                // Scale image to fit width first
-                if (imgRenderWidth > contentWidth) {
-                    imgRenderWidth = contentWidth;
-                    imgRenderHeight = imgRenderWidth / ratio;
-                }
-                // Then scale down further if it exceeds max height
-                if (imgRenderHeight > maxImageHeight) {
-                    imgRenderHeight = maxImageHeight;
-                    imgRenderWidth = imgRenderHeight * ratio;
-                }
-
-                // 2. Calculate Y position for the image content area *below* the header
-                const pageImageContentStartY = headerAndSubHeadingHeightEstimate + margin; // Y where content starts below header
-                const pageImageContentHeight = pageHeight - pageImageContentStartY - margin - footerHeight;
-                const rowHeight = pageImageContentHeight / imagesPerPage;
-
-                // 3. Calculate the specific Y position for this image within its row, below the header
-                const cellY = pageImageContentStartY + indexWithinPair * rowHeight;
-                const imgX = (pageWidth - imgRenderWidth) / 2;
-                const imgY = cellY + (rowHeight - imgRenderHeight) / 2; // Positioned relative to pageImageContentStartY
-
-                // 4. Add the image at the calculated X, Y (which is in the body)
-                doc.addImage(imgData, 'JPEG', imgX, imgY, imgRenderWidth, imgRenderHeight, undefined, 'FAST'); // 'FAST' typically gives best compression
-
-                // ... (update currentY logic) ...
+            if (!imgData) {
+              console.error(`Failed to load image ${i}`);
+              continue;
             }
+
+            // Get image properties
+            const imgProps = doc.getImageProperties(imgData);
+            const ratio = imgProps.width / imgProps.height;
+
+            processedImages.push({
+              index: i,
+              data: imgData,
+              width: imgProps.width,
+              height: imgProps.height,
+              ratio: ratio
+            });
+          } catch (error) {
+            console.error(`Error processing image ${i}:`, error);
+          }
         }
 
-        // --- Final Footer Update ---
-        totalPages = doc.internal.getNumberOfPages(); // Get the final page count
-        const finalPrintDateTime = new Date().toLocaleString(); // Get consistent time for all footers
+        // --- Calculate total pages needed ---
+        // First page: 1 image + table
+        // Subsequent pages: 2 images per page
+        const imagesAfterFirstPage = processedImages.length - 1;
+        const totalPages = 1 + Math.ceil(Math.max(0, imagesAfterFirstPage) / 2);
+        let currentPage = 1;
+
+        // --- FIRST PAGE: Header + First Image + Table ---
+        let currentY = this.addHeaderFooter(doc, currentPage, totalPages, logoDataUrl, logoImg, 
+          this.filterLevel, this.filterIDValue, this.startDate, this.endDate);
+        const headerHeight = currentY - margin;
+        
+        // Calculate available body height on first page
+        const availableBodyHeight = pageHeight - headerHeight - margin - footerHeight;
+        
+        // REQUIREMENT 2.a: First image takes up half of the vertical body space
+        if (processedImages.length > 0) {
+          const firstImage = processedImages[0];
+          // Calculate max dimensions (half of available body height)
+          const maxImageHeight = availableBodyHeight / 2;
+          
+          // Calculate dimensions to fit within allocated space
+          let imgWidth = firstImage.width;
+          let imgHeight = firstImage.height;
+          
+          // Scale based on width first
+          if (imgWidth > contentWidth) {
+            imgWidth = contentWidth;
+            imgHeight = imgWidth / firstImage.ratio;
+          }
+          
+          // Then ensure it doesn't exceed max height
+          if (imgHeight > maxImageHeight) {
+            imgHeight = maxImageHeight;
+            imgWidth = imgHeight * firstImage.ratio;
+          }
+          
+          // Center image horizontally
+          const imgX = margin + (contentWidth - imgWidth) / 2;
+          
+          // Add image to PDF
+          doc.addImage(firstImage.data, 'PNG', imgX, currentY, imgWidth, imgHeight);
+          currentY += imgHeight + 20; // Add space after image
+        }
+        
+        // REQUIREMENT 2.b: Table takes up the second half of the vertical body space
+        if (this.tableData) {
+          const head = [['', ...this.tableData.columns]];
+          const body = this.tableData.rows.map((rowLabel, rowIndex) => {
+            return [rowLabel, ...this.tableData.cell_data[rowIndex]];
+          });
+
+          // Add table after first image
+          autoTable(doc, {
+            head: head,
+            body: body,
+            startY: currentY,
+            theme: 'grid',
+            styles: { fontSize: 8, cellPadding: 4, overflow: 'linebreak' },
+            headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41], fontStyle: 'bold', halign: 'center', lineWidth: 0.5, lineColor: [222, 226, 230] },
+            bodyStyles: { lineWidth: 0.5, lineColor: [222, 226, 230] },
+            columnStyles: {
+              0: { fontStyle: 'bold', halign: 'left', fillColor: [248, 249, 250] },
+              // Right-align all data columns
+              ...Array.from({ length: this.tableData.columns.length }, (_, i) => i + 1).reduce((acc, col) => {
+                acc[col] = { halign: 'right' };
+                return acc;
+              }, {})
+            },
+            didParseCell: (data) => {
+              // Apply font color
+              if (data.section === 'body' && data.column.index > 0) {
+                const rowIndex = data.row.index;
+                const colIndex = data.column.index - 1;
+                if (this.tableData.cell_colors?.[rowIndex]?.[colIndex]) {
+                  const color = this.tableData.cell_colors[rowIndex][colIndex];
+                  data.cell.styles.textColor = (color === 'red') ? [220, 53, 69] : [33, 37, 41];
+                }
+              }
+            },
+            margin: {
+              left: margin,
+              right: margin,
+              top: margin,
+              bottom: margin + footerHeight
+            }
+          });
+        }
+
+        // --- SUBSEQUENT PAGES: Two images per page ---
+        // REQUIREMENT 3: For each successive page, include 2 images
+        for (let i = 1; i < processedImages.length; i += 2) {
+          // Add a new page for each pair of images
+          doc.addPage();
+          currentPage++;
+          
+          // Add header
+          let pageY = this.addHeaderFooter(doc, currentPage, totalPages, logoDataUrl, logoImg, 
+            this.filterLevel, this.filterIDValue, this.startDate, this.endDate);
+          
+          // Calculate available body height
+          const availableBodyHeight = pageHeight - (pageY - margin) - margin - footerHeight;
+          const imageAreaHeight = availableBodyHeight / 2; // Each image gets half the available space
+          
+          // Process first image on this page
+          const img1 = processedImages[i];
+          if (img1) {
+            // Calculate max dimensions
+            const maxImgHeight = imageAreaHeight - 20; // Subtract some padding
+            
+            // Calculate dimensions to fit within allocated space
+            let imgWidth = img1.width;
+            let imgHeight = img1.height;
+            
+            // Scale based on width first
+            if (imgWidth > contentWidth) {
+              imgWidth = contentWidth;
+              imgHeight = imgWidth / img1.ratio;
+            }
+            
+            // Then ensure it doesn't exceed max height
+            if (imgHeight > maxImgHeight) {
+              imgHeight = maxImgHeight;
+              imgWidth = imgHeight * img1.ratio;
+            }
+            
+            // Center image horizontally
+            const imgX = margin + (contentWidth - imgWidth) / 2;
+            
+            // Add image to PDF
+            doc.addImage(img1.data, 'PNG', imgX, pageY, imgWidth, imgHeight);
+            pageY += imgHeight + 20; // Add space after image
+          }
+          
+          // Process second image on this page (if it exists)
+          if (i + 1 < processedImages.length) {
+            const img2 = processedImages[i + 1];
+            
+            // Calculate max dimensions
+            const maxImgHeight = imageAreaHeight - 20; // Subtract some padding
+            
+            // Calculate dimensions to fit within allocated space
+            let imgWidth = img2.width;
+            let imgHeight = img2.height;
+            
+            // Scale based on width first
+            if (imgWidth > contentWidth) {
+              imgWidth = contentWidth;
+              imgHeight = imgWidth / img2.ratio;
+            }
+            
+            // Then ensure it doesn't exceed max height
+            if (imgHeight > maxImgHeight) {
+              imgHeight = maxImgHeight;
+              imgWidth = imgHeight * img2.ratio;
+            }
+            
+            // Center image horizontally
+            const imgX = margin + (contentWidth - imgWidth) / 2;
+            
+            // Add image to PDF
+            doc.addImage(img2.data, 'PNG', imgX, pageY, imgWidth, imgHeight);
+          }
+        }
+
+        // --- Add footers to all pages ---
+        const finalPrintDateTime = new Date().toLocaleString();
         for (let i = 1; i <= totalPages; i++) {
           doc.setPage(i);
-          // Draw the footer cleanly
           doc.setFontSize(9);
           doc.setFont(undefined, 'normal');
           const footerY = pageHeight - margin / 2;
           const pageNumText = `Page ${i} of ${totalPages}`;
-          // Draw text - this should not overlap now
           doc.text(finalPrintDateTime, margin, footerY, { align: 'left' });
           doc.text(pageNumText, pageWidth - margin, footerY, { align: 'right' });
         }
 
         // --- Save PDF ---
-        doc.save('ActualToBudget_Report.pdf');
-
+        doc.save('ActualToBudgetDashboard_Report.pdf');
+        console.log(`PDF generated with ${totalPages} pages`);
       } catch (error) {
         console.error('Failed to generate PDF:', error);
         this.progress.step = 'Failed to Generate PDF';
@@ -499,23 +515,73 @@ export default {
       }
     },
 
-    // Helper function to fetch image and convert to Data URL
+    // Improved helper function to handle both SVG and PNG images
     async getImageDataUrl(url) {
-        try {
-            // Append timestamp to bypass cache if necessary (already done in createReport)
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
-            const blob = await response.blob();
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
-        } catch (error) {
-            console.error(`Error loading image ${url}:`, error);
-            return null; // Return null if image loading fails
+      try {
+        console.log(`Loading image: ${url}`);
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch image: ${response.statusText}`);
         }
+        
+        // Check if image is SVG
+        const isSVG = url.toLowerCase().includes('.svg');
+        
+        if (isSVG) {
+          // REQUIREMENT 1: Convert SVG to PNG for PDF
+          console.log(`Converting SVG to PNG: ${url}`);
+          const svgText = await response.text();
+          
+          // Create a blob with the SVG content
+          const svgBlob = new Blob([svgText], {type: 'image/svg+xml'});
+          const svgUrl = URL.createObjectURL(svgBlob);
+          
+          // Return a promise that resolves when the image is loaded and converted
+          return new Promise((resolve, reject) => {
+            const img = new Image();
+            
+            img.onload = () => {
+              // Create a canvas to render the SVG
+              const canvas = document.createElement('canvas');
+              // Set canvas dimensions to the image size or default if not available
+              canvas.width = img.naturalWidth || 800;
+              canvas.height = img.naturalHeight || 600;
+              
+              // Draw the SVG onto the canvas
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0);
+              
+              // Convert canvas to PNG data URL
+              const pngDataUrl = canvas.toDataURL('image/png');
+              
+              // Clean up
+              URL.revokeObjectURL(svgUrl);
+              
+              resolve(pngDataUrl);
+            };
+            
+            img.onerror = (error) => {
+              URL.revokeObjectURL(svgUrl);
+              reject(new Error(`Failed to load SVG: ${error}`));
+            };
+            
+            // Set the source to the SVG Blob URL
+            img.src = svgUrl;
+          });
+        } else {
+          // For PNG or other formats, use the existing approach
+          const blob = await response.blob();
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        }
+      } catch (error) {
+        console.error(`Error processing image ${url}:`, error);
+        return null;
+      }
     }
   }
 }
