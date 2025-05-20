@@ -18,6 +18,7 @@ import UserLogin from '@/components/UserLogin.vue' // Import the new component
 //import ProviderPage from '@/components/ProviderPage.vue'
 import ProviderPageNew from '@/components/ProviderPageNew.vue'
 import PayPeriodUploader from '@/components/PayPeriodUploader.vue'
+import ClinicQuadrants from '@/components/ClinicQuadrants.vue'
 
 
 const routes = [
@@ -39,6 +40,7 @@ const routes = [
   { path: '/dow-visits-dashboard', name: 'DOWVisitsDashboard', component: DOWVisitsDashboard },
   { path: '/oos-compensation', name: 'OOSCompensation', component: OOSCompesation },
   { path: '/login', name: 'Login', component: UserLogin }, // Add the new route
+  { path: '/clinic-quadrants', name: 'ClinicQuadrants', component: ClinicQuadrants }, // Add the new route
 
   { path: '/', redirect: '/home' }  
   // other routes... 
