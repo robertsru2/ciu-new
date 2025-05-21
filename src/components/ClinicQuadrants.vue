@@ -1,5 +1,6 @@
 <template>
   <div class="container">
+    <!-- Header section remains unchanged -->
     <div class="header">
       <div class="logo-header">
         <img class="logo" alt="National Jewish Health" src="../assets/NJ_Logo.png" ref="logoImage">
@@ -50,39 +51,41 @@
       </div> 
     </div> 
 
+    <!-- Updated content area with paired image-table data -->
     <div class="content-area">
-      <div v-if="imageUrls.length > 0" class="image-container">
-        <img :src="imageUrls[0]" :key="'display-' + imageUrls[0]" alt="Report Image 1" class="outlined-image">
-        <img :src="imageUrls[0]" :key="imageUrls[0]" :ref="'reportImage0'" alt="Report Image for PDF" style="display: none;">
-      </div>
+      <!-- Show each image-table pair in sequence -->
+      <div v-for="(pair, index) in displayPairs" :key="index" class="image-table-pair">
+        <!-- Image section -->
+        <div v-if="pair.imageUrl" class="image-container">
+          <img :src="pair.imageUrl" :key="'display-' + pair.imageUrl" :alt="`Report Image ${index + 1}`" class="outlined-image">
+          <img :src="pair.imageUrl" :key="pair.imageUrl" :ref="`reportImage${index}`" alt="Report Image for PDF" style="display: none;">
+        </div>
 
-      <div v-if="tableData" class="table-container">
-        <h3>Clinic Quadrants Data</h3>
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th></th> 
-              <th v-for="(col, index) in tableData.columns" :key="`header-${index}`">{{ col }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(rowLabel, rowIndex) in tableData.rows" :key="`row-${rowIndex}`">
-              <th>{{ rowLabel }}</th> 
-              <td v-for="(cell, colIndex) in tableData.cell_data[rowIndex]"
-                  :key="`cell-${rowIndex}-${colIndex}`"
-                  :style="{ color: tableData.cell_colors[rowIndex][colIndex] }">
-                {{ cell }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div v-if="imageUrls.length > 1" class="image-container">
-        <template v-for="(imgUrl, index) in imageUrls.slice(1)" :key="imgUrl">
-           <img :src="imgUrl" :alt="`Report Image ${index + 2}`" class="outlined-image">
-           <img :src="imgUrl" :ref="'reportImage' + (index + 1)" alt="Report Image for PDF" style="display: none;">
-        </template>
+        <!-- Table section for this image -->
+        <div v-if="pair.tableData" class="table-container">
+          <h3>Clinic Quadrants Data - Section {{index + 1}}</h3>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th v-for="(column, colIndex) in getTableColumns(pair.tableData)" 
+                    :key="`header-${index}-${colIndex}`" 
+                    class="column-header">
+                  {{ column }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, rowIndex) in pair.tableData" 
+                  :key="`row-${index}-${rowIndex}`">
+                <td v-for="(value, key, cellIndex) in row" 
+                    :key="`cell-${index}-${rowIndex}-${cellIndex}`"
+                    :class="getCellClass(value, key)">
+                  {{ formatCellValue(value, key) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div> 
   </div> 
@@ -91,7 +94,7 @@
 <script>
 import axios from 'axios';
 //import { jsPDF } from "jspdf";
-//import autoTable from 'jspdf-autotable'; // Import the plugin
+//import autoTable from 'jspdf-autotable';
 
 export default {
   data() {
@@ -103,13 +106,12 @@ export default {
       selectedDepartment: '',
       selectedDivision: '',
       selectedProviderType: 'ALL',
-      tableData: null,
+      displayPairs: [], // New array to hold image-table pairs
       startDate: '2023-07-01',
       endDate: new Date().toISOString().substr(0, 10),
       filterIDValue: 'DOM',
       filterLevel: 'DepartmentLevel',
       progress: { current: 0, total: 0, step: 'API Server is Up' },
-      imageUrls: [],
       includePriorYears: true,
       isLoading: false,
     };
@@ -169,8 +171,8 @@ export default {
     async createReport() {
       try {
         this.isLoading = true;
-        this.imageUrls = []; // Clear previous images
-        this.tableData = null; // Clear previous table data
+        this.displayPairs = []; // Clear previous data
+        
         const reportRequest = {
           startDate: this.startDate,
           endDate: this.endDate,
@@ -181,65 +183,130 @@ export default {
         console.log('FilterID Value', this.filterIDValue);
         console.log('Filter Level', this.filterLevel);
 
+        // Fetch data from the API
         const response = await axios.post('http://localhost:8000/clinic-quadrants', reportRequest);
-        const timestamp = new Date().getTime();
         console.log('Report Response:', response.data);
         
-        // --- Handle Images ---
+        // Check if we have the expected data structure
+        if (!response.data.img_names || !response.data.table) {
+          console.error('Unexpected response format from server');
+          this.progress.step = 'Failed to process server response';
+          return;
+        }
+        
+        const timestamp = new Date().getTime();
         const imgNames = response.data.img_names;
-        console.log('Image Names:', imgNames);
+        const rawTableData = response.data.table;
+        
+        // Check that we have image names to process
         if (imgNames && imgNames.length > 0) {
-            try {
-                // Modify URL construction to handle the path correctly
-                const imgResponse = await fetch(`http://localhost:8000/dashboard-get-images/?${imgNames.map(img_name => `img_names=${encodeURIComponent(img_name)}`).join('&')}`);
-                if (!imgResponse.ok) {
-                    throw new Error('Network response for images was not ok');
-                }
-                const imgUrls = await imgResponse.json();
-                
-                // Fix the image URLs by ensuring they use the correct format
-                console.group('Image URL Processing');
-                console.log('Raw Image URLs from server:', imgUrls);
-                const processedUrls = imgUrls.map(imgUrl => {
-                    const finalUrl = !imgUrl.startsWith('http') ? 
-                        `http://localhost:8000${imgUrl}?t=${timestamp}` : 
-                        `${imgUrl}?t=${timestamp}`;
-                    console.log(`Original URL: ${imgUrl}`);
-                    console.log(`Processed URL: ${finalUrl}`);
-                    return finalUrl;
-                });
-                console.groupEnd();
-                this.imageUrls = processedUrls;
-                console.log('Processed Image URLs:', this.imageUrls);
-            } catch (error) {
-                console.error('Error fetching images:', error);
-                this.progress.step = `Failed to load images: ${error.message}`;
+          try {
+            // Fetch image URLs
+            const imgResponse = await fetch(`http://localhost:8000/dashboard-get-images/?${imgNames.map(img_name => `img_names=${encodeURIComponent(img_name)}`).join('&')}`);
+            if (!imgResponse.ok) {
+              throw new Error('Network response for images was not ok');
             }
-        } else {
-            console.warn('No image names returned from the server.');
-        }
-
-        // --- Handle Table Data ---
-        if (response.data.table) {
-            this.tableData = response.data.table;
-            console.log('Table Data Received:', this.tableData);
-            // Basic validation (optional)
-            if (!this.tableData.columns || !this.tableData.rows || !this.tableData.cell_data || !this.tableData.cell_colors) {
-                console.error('Received table data is incomplete.');
-                this.tableData = null; // Invalidate if incomplete
+            
+            const imgUrls = await imgResponse.json();
+            console.log('Raw Image URLs from server:', imgUrls);
+            
+            // Process image URLs
+            const processedUrls = imgUrls.map(imgUrl => {
+              return !imgUrl.startsWith('http') ? 
+                `http://localhost:8000${imgUrl}?t=${timestamp}` : 
+                `${imgUrl}?t=${timestamp}`;
+            });
+            
+            // Create paired data structure
+            // Assuming each image corresponds to an entry in the table data
+            const pairs = [];
+            for (let i = 0; i < processedUrls.length; i++) {
+              const pair = {
+                imageUrl: processedUrls[i],
+                tableData: Array.isArray(rawTableData) && i < rawTableData.length ? 
+                  rawTableData[i].table_data : null
+              };
+              pairs.push(pair);
             }
+            
+            // Update the display pairs
+            this.displayPairs = pairs;
+            console.log('Display pairs created:', this.displayPairs);
+            
+          } catch (error) {
+            console.error('Error processing image data:', error);
+            this.progress.step = `Failed to process images: ${error.message}`;
+          }
         } else {
-            console.warn('No table data returned from the server.');
+          console.warn('No image names returned from the server.');
         }
+        
       } catch (error) {
         console.error('Failed to create report:', error);
         this.progress.step = `Failed to Create Report: ${error.message}`;
-        this.tableData = null; // Ensure table is cleared on error
-        this.imageUrls = []; // Ensure images are cleared on error
-      } finally { // Use finally to ensure isLoading is always set to false
+      } finally {
         this.isLoading = false;
       }
     },
+    
+    // Helper methods for displaying table data
+    getTableColumns(tableData) {
+      if (!tableData || tableData.length === 0) return [];
+      return Object.keys(tableData[0]);
+    },
+    
+    getCellClass(value, key) {
+      // Add specific classes based on column
+      if (key === 'Fiscal_Year') {
+        return 'year-cell';
+      }
+      if (key === 'Fill_Rate') {
+        return 'percentage-cell';
+      }
+      if (key === 'Available_Time' || key === 'Filled_Time') {
+        return 'numeric-cell';
+      }
+      if (key === 'DepartmentNM' || key === 'ProviderNM') {
+        return 'text-cell';
+      }
+      
+      // Default classification based on value type
+      return {
+        'numeric-cell': typeof value === 'number',
+        'percentage-cell': typeof value === 'string' && value.includes('%'),
+        'text-cell': typeof value === 'string' && !value.includes('%')  // Fixed this line by adding closing parenthesis
+      };
+    },
+    
+    formatCellValue(value, key) {
+      if (value === null || value === undefined) return '';
+      
+      // Handle numbers with appropriate formatting
+      if (typeof value === 'number') {
+        // Format Fiscal Year as integer (no decimal places and no thousands separator)
+        if (key === 'Fiscal_Year') {
+          // Use Math.round to ensure it's an integer, then convert to string (not using toLocaleString)
+          return Math.round(value).toString();
+        }
+        
+        // Format percentages like Fill_Rate
+        if (key === 'Fill_Rate') {
+          return value.toLocaleString(undefined, {
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 1
+          });
+        }
+        
+        // Format other numbers with 2 decimal places
+        return value.toLocaleString(undefined, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+      }
+      
+      return value;
+    },
+    
     async downloadData() {
       try {
         console.log('ClinicQuadrants downloadData method called')
@@ -373,55 +440,78 @@ export default {
 }
 
 .table-container {
-  width: 90%;
-  margin-bottom: 1.5rem;
+  width: 100%;
+  margin: 1rem 0;
   overflow-x: auto;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
 }
 
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 1rem;
 }
 
 .data-table th,
 .data-table td {
   border: 1px solid #dee2e6;
-  padding: 8px;
-  text-align: right;
-}
-
-.data-table th:first-child {
+  padding: 10px;
   text-align: left;
 }
 
-.data-table thead th {
+.data-table th {
   background-color: #f8f9fa;
+  font-weight: bold;
 }
 
-.checkbox-container {
-  display: flex;
-  align-items: center;
+.data-table tr:nth-child(even) {
+  background-color: #f9f9f9;
 }
 
-.red-text {
-  color: red;
+.data-table .numeric-cell {
+  text-align: right;
+  font-family: 'Courier New', monospace;
 }
 
-.loading-spinner {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 1000;
+.data-table .percentage-cell {
+  text-align: right;
+  font-weight: bold;
 }
 
-.scaled {
-  transform: scale(0.5);
-  transform-origin: center;
+.data-table .text-cell {
+  text-align: left;
 }
 
-.print-button {
-  margin-left: 1rem;
+.data-table .year-cell {
+  text-align: center;
+  font-family: inherit;
+  font-weight: normal;
+}
+
+/* Add new styles for image-table pairs */
+.image-table-pair {
+  width: 90%;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px dashed #ccc;
+}
+
+.image-table-pair:last-child {
+  border-bottom: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .image-table-pair {
+    width: 100%;
+  }
+  
+  .table-container {
+    overflow-x: auto;
+  }
+  
+  .data-table {
+    min-width: 600px;
+  }
 }
 </style>
