@@ -93,8 +93,7 @@
 
 <script>
 import axios from 'axios';
-//import { jsPDF } from "jspdf";
-//import autoTable from 'jspdf-autotable';
+import quadrantsImageFile from '../assets/quadrants.png';
 
 export default {
   data() {
@@ -335,8 +334,338 @@ export default {
         console.error('Failed to download data:', error);
       }
     },
-    printToPDF() {
-      alert('Print to PDF');
+    async printToPDF() {
+      console.log('printToPDF method called');
+      if (this.displayPairs.length === 0) {
+        console.log('No content to print. Creating report...');
+        await this.createReport(); // Ensure data is loaded
+        if (this.displayPairs.length === 0) {
+          console.error("Still no content to print after report creation.");
+          this.isLoading = false;
+          return;
+        }
+      }
+
+      this.isLoading = true;
+
+      try {
+        const { jsPDF } = await import("jspdf");
+        const autoTable = (await import('jspdf-autotable')).default;
+
+        const doc = new jsPDF('p', 'pt', 'letter');
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 40;
+        const contentWidth = pageWidth - 2 * margin;
+        const estimatedFooterHeight = 30; 
+        const estimatedHeaderHeight = 120; // Used for autoTable's top margin on new pages
+
+        // --- Load Logo (for header) ---
+        const logoImg = this.$refs.logoImage;
+        let logoDataUrl = '';
+        if (logoImg && logoImg.src) {
+          try {
+            logoDataUrl = await this.getImageDataUrl(logoImg.src, true); // true for isLogo
+          } catch (e) {
+            console.error("Error loading logo image for PDF header:", e);
+          }
+        }
+
+        // --- Load Title Page Image (quadrants.png) ---
+        let quadrantsImageDataUrl = '';
+        try {
+          quadrantsImageDataUrl = await this.getImageDataUrl(quadrantsImageFile, false); // false: not a logo
+        } catch (e) {
+          console.error("Error loading quadrants.png for title page:", e);
+        }
+
+        const addPageHeader = (docInstance, pageNumToAddHeaderTo) => {
+          const originalPage = docInstance.internal.getCurrentPageInfo().pageNumber;
+          docInstance.setPage(pageNumToAddHeaderTo);
+          docInstance.setTextColor(0, 0, 0);
+
+          let currentY = margin;
+          const logoPhysicalWidth = 75;
+          let logoPhysicalHeight = 35;
+
+          if (logoImg && logoImg.naturalWidth > 0) {
+             logoPhysicalHeight = (logoImg.naturalHeight / logoImg.naturalWidth) * logoPhysicalWidth;
+          }
+
+          if (logoDataUrl) {
+            try {
+              const format = logoDataUrl.substring(logoDataUrl.indexOf('/') + 1, logoDataUrl.indexOf(';')).toUpperCase();
+              docInstance.addImage(logoDataUrl, format, margin, currentY, logoPhysicalWidth, logoPhysicalHeight);
+            } catch (imgError) {
+              console.error("Error adding logo to PDF header:", imgError);
+            }
+          }
+
+          docInstance.setFontSize(22);
+          docInstance.setFont(undefined, 'bold');
+          const pageHeadingText = this.pageHeading;
+          const logoPadding = 20; // Padding between logo and text
+          const spaceForHeading = contentWidth - logoPhysicalWidth - logoPadding;
+          const headingX = margin + logoPhysicalWidth + logoPadding + (spaceForHeading / 2);
+          const headingY = currentY + (logoPhysicalHeight / 2) + (docInstance.getFontSize() / 3);
+          docInstance.text(pageHeadingText, headingX, headingY, { align: 'center', maxWidth: spaceForHeading });
+
+          currentY += Math.max(logoPhysicalHeight, docInstance.getLineHeightFactor() * 22) + 15;
+
+          docInstance.setFontSize(16);
+          docInstance.setFont(undefined, 'normal');
+          const filterText = `${this.filterLevel} = ${this.filterIDValue} | Date Range: ${this.startDate} To ${this.endDate}`;
+          docInstance.text(filterText, pageWidth / 2, currentY, { align: 'center', maxWidth: contentWidth });
+          currentY += docInstance.getLineHeightFactor() * 16 + 20;
+
+          docInstance.setPage(originalPage);
+          return currentY; 
+        };
+
+        const addPageFooter = (docInstance, pageNumToAddFooterTo, totalPages) => {
+          const originalPage = docInstance.internal.getCurrentPageInfo().pageNumber;
+          docInstance.setPage(pageNumToAddFooterTo);
+          docInstance.setTextColor(0, 0, 0); 
+          docInstance.setFontSize(9); 
+          docInstance.setFont(undefined, 'normal');
+
+          const footerY = pageHeight - margin + 10; 
+          const dateTime = new Date().toLocaleString();
+          docInstance.text(dateTime, margin, footerY);
+
+          const pageText = `Page ${pageNumToAddFooterTo} of ${totalPages}`;
+          const pageTextWidth = docInstance.getTextWidth(pageText);
+          docInstance.text(pageText, pageWidth - margin - pageTextWidth, footerY);
+          docInstance.setPage(originalPage);
+        };
+
+        // --- Create Title Page (Page 1) ---
+        const titlePageNum = 1; 
+        let titlePageContentStartY = addPageHeader(doc, titlePageNum);
+        const titlePageAvailableBodyHeight = pageHeight - titlePageContentStartY - margin - estimatedFooterHeight;
+
+
+        if (quadrantsImageDataUrl) {
+          try {
+            const imgProps = doc.getImageProperties(quadrantsImageDataUrl);
+            const titleImageRenderWidth = contentWidth * 0.9; // 90% of content width
+            const titleImageRenderHeight = (imgProps.height / imgProps.width) * titleImageRenderWidth;
+            const titleImageX = margin + (contentWidth - titleImageRenderWidth) / 2; // Center the 90% image
+            
+            // Simple vertical centering for the title image in the available body space
+            let titleImageY = titlePageContentStartY + (titlePageAvailableBodyHeight - titleImageRenderHeight) / 2;
+            if (titleImageY < titlePageContentStartY) titleImageY = titlePageContentStartY; // Ensure it doesn't go above start Y
+
+            const format = quadrantsImageDataUrl.substring(quadrantsImageDataUrl.indexOf('/') + 1, quadrantsImageDataUrl.indexOf(';')).toUpperCase();
+            doc.addImage(quadrantsImageDataUrl, format, titleImageX, titleImageY, titleImageRenderWidth, titleImageRenderHeight, undefined, 'MEDIUM');
+          } catch (e) {
+            console.error("Error adding quadrants.png to title page:", e);
+            doc.setTextColor(255,0,0);
+            doc.text("Error loading title page image.", margin, titlePageContentStartY + 20);
+            doc.setTextColor(0,0,0);
+          }
+        } else {
+            doc.setTextColor(255,0,0); // Keep error messages in red
+            doc.text("Title page image (quadrants.png) could not be loaded.", margin, titlePageContentStartY + 20);
+            doc.setTextColor(0,0,0); // Reset to black
+        }
+
+        // --- Loop for each image-table pair (starting on new pages) ---
+        for (let i = 0; i < this.displayPairs.length; i++) {
+          const pair = this.displayPairs[i];
+          doc.addPage(); // Each report pair gets a new page
+          const currentPageForPair = doc.internal.getCurrentPageInfo().pageNumber;
+          let contentStartY = addPageHeader(doc, currentPageForPair);
+
+          const availableBodyHeight = pageHeight - contentStartY - margin - estimatedFooterHeight;
+          let imageActualHeight = 0;
+
+          if (pair.imageUrl) {
+            try {
+              const imageDataUrl = await this.getImageDataUrl(pair.imageUrl);
+              if (imageDataUrl) {
+                const imgProps = doc.getImageProperties(imageDataUrl);
+                
+                const targetImageContainerWidth = contentWidth; // 100% horizontal
+                const targetImageContainerHeight = availableBodyHeight * 0.60; // 60% vertical space for image section
+
+                let imgRenderWidth, imgRenderHeight;
+
+                if ((imgProps.width / imgProps.height) > (targetImageContainerWidth / targetImageContainerHeight)) {
+                    imgRenderWidth = targetImageContainerWidth;
+                    imgRenderHeight = (imgProps.height / imgProps.width) * imgRenderWidth;
+                } else {
+                    imgRenderHeight = targetImageContainerHeight;
+                    imgRenderWidth = (imgProps.width / imgProps.height) * imgRenderHeight;
+                }
+                
+                // Ensure rendered image does not exceed the container dimensions (safeguard)
+                if (imgRenderHeight > targetImageContainerHeight) {
+                    imgRenderHeight = targetImageContainerHeight;
+                    imgRenderWidth = (imgProps.width / imgProps.height) * imgRenderHeight;
+                }
+                if (imgRenderWidth > targetImageContainerWidth) { // Should not happen if logic above is correct
+                    imgRenderWidth = targetImageContainerWidth;
+                    imgRenderHeight = (imgProps.height / imgProps.width) * imgRenderWidth;
+                }
+
+                imageActualHeight = imgRenderHeight;
+                const imgX = margin + (contentWidth - imgRenderWidth) / 2; // Center the image
+
+                const format = imageDataUrl.substring(imageDataUrl.indexOf('/') + 1, imageDataUrl.indexOf(';')).toUpperCase();
+                doc.addImage(imageDataUrl, format, imgX, contentStartY, imgRenderWidth, imgRenderHeight, undefined, 'MEDIUM');
+              }
+            } catch (e) {
+              console.error(`Error processing image ${pair.imageUrl} for PDF:`, e);
+              doc.setTextColor(255,0,0);
+              doc.text("Error loading image.", margin, contentStartY + 20);
+              doc.setTextColor(0,0,0);
+            }
+          }
+          contentStartY += imageActualHeight + 10; // Space after image
+
+          if (pair.tableData && pair.tableData.length > 0) {
+            const columns = this.getTableColumns(pair.tableData);
+            const limitedTableData = pair.tableData.slice(0, 30);
+            const body = limitedTableData.map(row => columns.map(col => this.formatCellValue(row[col], col)));
+
+            autoTable(doc, {
+              head: [columns],
+              body: body,
+              startY: contentStartY,
+              theme: 'grid',
+              styles: {
+                fontSize: 8, 
+                textColor: [0, 0, 0],
+                cellPadding: 2,
+                overflow: 'linebreak'
+              },
+              headStyles: { fillColor: [233, 236, 239], textColor: [0, 0, 0], fontStyle: 'bold' },
+              bodyStyles: { textColor: [0, 0, 0] },
+              columnStyles: this.getColumnStyles(columns),
+              margin: { top: estimatedHeaderHeight, left: margin, right: margin, bottom: margin + estimatedFooterHeight },
+              pageBreak: 'auto',
+              didDrawPage: (data) => {
+                addPageHeader(doc, data.pageNumber);
+              }
+            });
+          }
+        }
+
+        // --- Final pass to add footers to all pages ---
+        const totalPages = doc.internal.getNumberOfPages();
+        for (let k = 1; k <= totalPages; k++) {
+          addPageFooter(doc, k, totalPages);
+        }
+
+        doc.save('ClinicQuadrants_Report.pdf');
+        console.log(`PDF generated successfully with ${totalPages} pages`);
+
+      } catch (error) {
+        console.error('Failed to generate PDF:', error);
+        this.progress.step = `Failed to generate PDF: ${error.message}`;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async getImageDataUrl(url, isLogo = false) {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch image: ${response.statusText} (URL: ${url})`);
+        }
+        const blob = await response.blob();
+
+        if (blob.type === 'image/svg+xml') {
+          return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = function() {
+              const canvas = document.createElement('canvas');
+              let drawWidth = this.naturalWidth;
+              let drawHeight = this.naturalHeight;
+              const MAX_SVG_CANVAS_DIM = 2000; // Limit canvas size for performance
+              if (drawWidth > MAX_SVG_CANVAS_DIM || drawHeight > MAX_SVG_CANVAS_DIM) {
+                const ratio = Math.min(MAX_SVG_CANVAS_DIM / drawWidth, MAX_SVG_CANVAS_DIM / drawHeight);
+                drawWidth *= ratio;
+                drawHeight *= ratio;
+              }
+              canvas.width = drawWidth;
+              canvas.height = drawHeight;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(this, 0, 0, drawWidth, drawHeight);
+              resolve(canvas.toDataURL('image/png')); // Convert SVG to PNG
+            };
+            img.onerror = (errEvent) => reject(new Error('Failed to load SVG into Image element. ' + (errEvent.toString ? errEvent.toString() : JSON.stringify(errEvent))));
+            const reader = new FileReader();
+            reader.onloadend = () => { img.src = reader.result; }; // reader.result is a dataURL
+            reader.onerror = () => reject(new Error('Failed to read SVG blob as dataURL.'));
+            reader.readAsDataURL(blob);
+          });
+        } else if (!isLogo && (blob.type === 'image/png' || blob.type === 'image/bmp' || !blob.type.startsWith('image/jpeg'))) {
+          // Convert non-logo, non-JPEG images to JPEG for size reduction
+          return new Promise((resolve, reject) => {
+            const image = new Image();
+            image.onload = () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = image.naturalWidth;
+              canvas.height = image.naturalHeight;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(image, 0, 0);
+              resolve(canvas.toDataURL('image/jpeg', 0.75)); // Quality 0.75 for JPEG
+            };
+            image.onerror = (errEvent) => reject(new Error('Failed to load image for JPEG conversion. ' + (errEvent.toString ? errEvent.toString() : JSON.stringify(errEvent))));
+            image.src = URL.createObjectURL(blob); // Use Object URL for non-SVG blobs
+            image.onloadend = () => URL.revokeObjectURL(image.src); // Clean up object URL
+          });
+        } else {
+          // For logos (if not SVG), already JPEGs, or other types, return as base64 data URL
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error('Failed to read image blob as dataURL.'));
+            reader.readAsDataURL(blob);
+          });
+        }
+      } catch (error) {
+        console.error(`Error in getImageDataUrl for ${url}:`, error);
+        return null;
+      }
+    },
+    // Helper function to get column styles for the table
+    getColumnStyles(columns) {
+      const styles = {};
+      
+      columns.forEach((col, index) => {
+        if (col === 'DepartmentNM' || col === 'ProviderNM' || col === 'ClinicNM') {
+          // Text columns - left aligned
+          styles[index] = { 
+            halign: 'left',
+            cellWidth: 'auto'
+          };
+        } else if (col === 'Fiscal_Year') {
+          // Year column - centered
+          styles[index] = { 
+            halign: 'center',
+            cellWidth: 'wrap'
+          };
+        } else if (col === 'Fill_Rate') {
+          // Percentage columns - right aligned, bold
+          styles[index] = { 
+            halign: 'right',
+            fontStyle: 'bold',
+            cellWidth: 'wrap'
+          };
+        } else {
+          // Numeric columns - right aligned
+          styles[index] = { 
+            halign: 'right',
+            cellWidth: 'wrap'
+          };
+        }
+      });
+      
+      return styles;
     }
   }
 }
