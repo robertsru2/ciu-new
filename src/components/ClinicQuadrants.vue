@@ -338,7 +338,7 @@ export default {
       console.log('printToPDF method called');
       if (this.displayPairs.length === 0) {
         console.log('No content to print. Creating report...');
-        await this.createReport(); // Ensure data is loaded
+        await this.createReport();
         if (this.displayPairs.length === 0) {
           console.error("Still no content to print after report creation.");
           this.isLoading = false;
@@ -357,29 +357,27 @@ export default {
         const pageHeight = doc.internal.pageSize.getHeight();
         const margin = 40;
         const contentWidth = pageWidth - 2 * margin;
-        const estimatedFooterHeight = 30; 
-        const estimatedHeaderHeight = 120; // Used for autoTable's top margin on new pages
+        const estimatedFooterHeight = 30;
+        const estimatedHeaderHeight = 120;
 
-        // --- Load Logo (for header) ---
         const logoImg = this.$refs.logoImage;
         let logoDataUrl = '';
         if (logoImg && logoImg.src) {
           try {
-            logoDataUrl = await this.getImageDataUrl(logoImg.src, true); // true for isLogo
+            logoDataUrl = await this.getImageDataUrl(logoImg.src, true);
           } catch (e) {
             console.error("Error loading logo image for PDF header:", e);
           }
         }
 
-        // --- Load Title Page Image (quadrants.png) ---
         let quadrantsImageDataUrl = '';
         try {
-          quadrantsImageDataUrl = await this.getImageDataUrl(quadrantsImageFile, false); // false: not a logo
+          quadrantsImageDataUrl = await this.getImageDataUrl(quadrantsImageFile, false);
         } catch (e) {
           console.error("Error loading quadrants.png for title page:", e);
         }
 
-        const addPageHeader = (docInstance, pageNumToAddHeaderTo) => {
+        const addPageHeader = (docInstance, pageNumToAddHeaderTo, isTitlePage = false) => { // Added isTitlePage parameter
           const originalPage = docInstance.internal.getCurrentPageInfo().pageNumber;
           docInstance.setPage(pageNumToAddHeaderTo);
           docInstance.setTextColor(0, 0, 0);
@@ -394,8 +392,17 @@ export default {
 
           if (logoDataUrl) {
             try {
-              const format = logoDataUrl.substring(logoDataUrl.indexOf('/') + 1, logoDataUrl.indexOf(';')).toUpperCase();
-              docInstance.addImage(logoDataUrl, format, margin, currentY, logoPhysicalWidth, logoPhysicalHeight);
+              // Determine format for logo (SVG or raster)
+              let logoFormat;
+              if (typeof logoDataUrl === 'string' && logoDataUrl.trim().startsWith('<svg')) {
+                logoFormat = 'SVG';
+              } else if (typeof logoDataUrl === 'string' && logoDataUrl.startsWith('data:')) {
+                logoFormat = logoDataUrl.substring(logoDataUrl.indexOf('/') + 1, logoDataUrl.indexOf(';')).toUpperCase();
+              } else {
+                console.warn('Unknown logo format for PDF header, assuming PNG.');
+                logoFormat = 'PNG'; 
+              }
+              docInstance.addImage(logoDataUrl, logoFormat, margin, currentY, logoPhysicalWidth, logoPhysicalHeight);
             } catch (imgError) {
               console.error("Error adding logo to PDF header:", imgError);
             }
@@ -404,7 +411,7 @@ export default {
           docInstance.setFontSize(22);
           docInstance.setFont(undefined, 'bold');
           const pageHeadingText = this.pageHeading;
-          const logoPadding = 20; // Padding between logo and text
+          const logoPadding = 20;
           const spaceForHeading = contentWidth - logoPhysicalWidth - logoPadding;
           const headingX = margin + logoPhysicalWidth + logoPadding + (spaceForHeading / 2);
           const headingY = currentY + (logoPhysicalHeight / 2) + (docInstance.getFontSize() / 3);
@@ -412,14 +419,20 @@ export default {
 
           currentY += Math.max(logoPhysicalHeight, docInstance.getLineHeightFactor() * 22) + 15;
 
-          docInstance.setFontSize(16);
-          docInstance.setFont(undefined, 'normal');
-          const filterText = `${this.filterLevel} = ${this.filterIDValue} | Date Range: ${this.startDate} To ${this.endDate}`;
-          docInstance.text(filterText, pageWidth / 2, currentY, { align: 'center', maxWidth: contentWidth });
-          currentY += docInstance.getLineHeightFactor() * 16 + 20;
+          if (!isTitlePage) { // Conditionally draw the second line of the header
+            docInstance.setFontSize(16);
+            docInstance.setFont(undefined, 'normal');
+            const filterText = `${this.filterLevel} = ${this.filterIDValue} | Date Range: ${this.startDate} To ${this.endDate}`;
+            docInstance.text(filterText, pageWidth / 2, currentY, { align: 'center', maxWidth: contentWidth });
+            currentY += docInstance.getLineHeightFactor() * 16 + 20;
+          } else {
+            // Add some extra space if the second line is skipped on the title page to maintain similar header height
+            currentY += 10; // Adjust as needed for visual balance
+          }
+
 
           docInstance.setPage(originalPage);
-          return currentY; 
+          return currentY;
         };
 
         const addPageFooter = (docInstance, pageNumToAddFooterTo, totalPages) => {
@@ -440,80 +453,109 @@ export default {
         };
 
         // --- Create Title Page (Page 1) ---
-        const titlePageNum = 1; 
-        let titlePageContentStartY = addPageHeader(doc, titlePageNum);
+        const titlePageNum = 1;
+        let titlePageContentStartY = addPageHeader(doc, titlePageNum, true); // Pass true for isTitlePage
         const titlePageAvailableBodyHeight = pageHeight - titlePageContentStartY - margin - estimatedFooterHeight;
-
 
         if (quadrantsImageDataUrl) {
           try {
-            const imgProps = doc.getImageProperties(quadrantsImageDataUrl);
-            const titleImageRenderWidth = contentWidth * 0.9; // 90% of content width
-            const titleImageRenderHeight = (imgProps.height / imgProps.width) * titleImageRenderWidth;
-            const titleImageX = margin + (contentWidth - titleImageRenderWidth) / 2; // Center the 90% image
-            
-            // Simple vertical centering for the title image in the available body space
-            let titleImageY = titlePageContentStartY + (titlePageAvailableBodyHeight - titleImageRenderHeight) / 2;
-            if (titleImageY < titlePageContentStartY) titleImageY = titlePageContentStartY; // Ensure it doesn't go above start Y
+            let format;
+            let isVector = false;
+            if (typeof quadrantsImageDataUrl === 'string' && quadrantsImageDataUrl.trim().startsWith('<svg')) {
+              format = 'SVG';
+              isVector = true;
+            } else if (typeof quadrantsImageDataUrl === 'string' && quadrantsImageDataUrl.startsWith('data:')) {
+              format = quadrantsImageDataUrl.substring(quadrantsImageDataUrl.indexOf('/') + 1, quadrantsImageDataUrl.indexOf(';')).toUpperCase();
+            } else {
+              throw new Error("Unknown image data format for title page.");
+            }
 
-            const format = quadrantsImageDataUrl.substring(quadrantsImageDataUrl.indexOf('/') + 1, quadrantsImageDataUrl.indexOf(';')).toUpperCase();
+            let titleImageRenderWidth = contentWidth * 0.9;
+            let titleImageRenderHeight;
+
+            if (isVector) {
+              titleImageRenderHeight = titlePageAvailableBodyHeight * 0.9; 
+            } else {
+              const imgProps = doc.getImageProperties(quadrantsImageDataUrl);
+              titleImageRenderHeight = (imgProps.height / imgProps.width) * titleImageRenderWidth;
+              if (titleImageRenderHeight > titlePageAvailableBodyHeight * 0.95) {
+                  titleImageRenderHeight = titlePageAvailableBodyHeight * 0.95;
+                  titleImageRenderWidth = (imgProps.width / imgProps.height) * titleImageRenderHeight;
+              }
+            }
+            
+            const titleImageX = margin + (contentWidth - titleImageRenderWidth) / 2;
+            let titleImageY = titlePageContentStartY + (titlePageAvailableBodyHeight - titleImageRenderHeight) / 2;
+            if (titleImageY < titlePageContentStartY) titleImageY = titlePageContentStartY;
+
             doc.addImage(quadrantsImageDataUrl, format, titleImageX, titleImageY, titleImageRenderWidth, titleImageRenderHeight, undefined, 'MEDIUM');
           } catch (e) {
-            console.error("Error adding quadrants.png to title page:", e);
+            console.error("Error adding quadrants image to title page:", e);
             doc.setTextColor(255,0,0);
             doc.text("Error loading title page image.", margin, titlePageContentStartY + 20);
             doc.setTextColor(0,0,0);
           }
         } else {
-            doc.setTextColor(255,0,0); // Keep error messages in red
+            doc.setTextColor(255,0,0);
             doc.text("Title page image (quadrants.png) could not be loaded.", margin, titlePageContentStartY + 20);
-            doc.setTextColor(0,0,0); // Reset to black
+            doc.setTextColor(0,0,0);
         }
 
         // --- Loop for each image-table pair (starting on new pages) ---
         for (let i = 0; i < this.displayPairs.length; i++) {
           const pair = this.displayPairs[i];
-          doc.addPage(); // Each report pair gets a new page
+          doc.addPage();
           const currentPageForPair = doc.internal.getCurrentPageInfo().pageNumber;
-          let contentStartY = addPageHeader(doc, currentPageForPair);
+          let contentStartY = addPageHeader(doc, currentPageForPair, false); // Pass false for isTitlePage
 
           const availableBodyHeight = pageHeight - contentStartY - margin - estimatedFooterHeight;
           let imageActualHeight = 0;
 
           if (pair.imageUrl) {
             try {
-              const imageDataUrl = await this.getImageDataUrl(pair.imageUrl);
-              if (imageDataUrl) {
-                const imgProps = doc.getImageProperties(imageDataUrl);
-                
-                const targetImageContainerWidth = contentWidth; // 100% horizontal
-                const targetImageContainerHeight = availableBodyHeight * 0.60; // 60% vertical space for image section
+              const imageData = await this.getImageDataUrl(pair.imageUrl);
+              if (imageData) {
+                let format;
+                let isVector = false;
+                if (typeof imageData === 'string' && imageData.trim().startsWith('<svg')) {
+                  format = 'SVG';
+                  isVector = true;
+                } else if (typeof imageData === 'string' && imageData.startsWith('data:')) {
+                  format = imageData.substring(imageData.indexOf('/') + 1, imageData.indexOf(';')).toUpperCase();
+                } else {
+                  throw new Error("Unknown image data format for report pair.");
+                }
 
                 let imgRenderWidth, imgRenderHeight;
+                const targetImageContainerHeight = availableBodyHeight * 0.60;
+                const targetImageContainerWidth = contentWidth;
 
-                if ((imgProps.width / imgProps.height) > (targetImageContainerWidth / targetImageContainerHeight)) {
-                    imgRenderWidth = targetImageContainerWidth;
-                    imgRenderHeight = (imgProps.height / imgProps.width) * imgRenderWidth;
-                } else {
-                    imgRenderHeight = targetImageContainerHeight;
-                    imgRenderWidth = (imgProps.width / imgProps.height) * imgRenderHeight;
+                if (isVector) {
+                  imgRenderWidth = targetImageContainerWidth;
+                  imgRenderHeight = targetImageContainerHeight; 
+                } else { 
+                  const imgProps = doc.getImageProperties(imageData);
+                  if ((imgProps.width / imgProps.height) > (targetImageContainerWidth / targetImageContainerHeight)) {
+                      imgRenderWidth = targetImageContainerWidth;
+                      imgRenderHeight = (imgProps.height / imgProps.width) * imgRenderWidth;
+                  } else {
+                      imgRenderHeight = targetImageContainerHeight;
+                      imgRenderWidth = (imgProps.width / imgProps.height) * imgRenderHeight;
+                  }
+                  if (imgRenderHeight > targetImageContainerHeight) {
+                      imgRenderHeight = targetImageContainerHeight;
+                      imgRenderWidth = (imgProps.width / imgProps.height) * imgRenderHeight;
+                  }
+                  if (imgRenderWidth > targetImageContainerWidth) {
+                      imgRenderWidth = targetImageContainerWidth;
+                      imgRenderHeight = (imgProps.height / imgProps.width) * imgRenderWidth;
+                  }
                 }
                 
-                // Ensure rendered image does not exceed the container dimensions (safeguard)
-                if (imgRenderHeight > targetImageContainerHeight) {
-                    imgRenderHeight = targetImageContainerHeight;
-                    imgRenderWidth = (imgProps.width / imgProps.height) * imgRenderHeight;
-                }
-                if (imgRenderWidth > targetImageContainerWidth) { // Should not happen if logic above is correct
-                    imgRenderWidth = targetImageContainerWidth;
-                    imgRenderHeight = (imgProps.height / imgProps.width) * imgRenderWidth;
-                }
+                imageActualHeight = imgRenderHeight; 
+                const imgX = margin + (contentWidth - imgRenderWidth) / 2;
 
-                imageActualHeight = imgRenderHeight;
-                const imgX = margin + (contentWidth - imgRenderWidth) / 2; // Center the image
-
-                const format = imageDataUrl.substring(imageDataUrl.indexOf('/') + 1, imageDataUrl.indexOf(';')).toUpperCase();
-                doc.addImage(imageDataUrl, format, imgX, contentStartY, imgRenderWidth, imgRenderHeight, undefined, 'MEDIUM');
+                doc.addImage(imageData, format, imgX, contentStartY, imgRenderWidth, imgRenderHeight, undefined, 'MEDIUM');
               }
             } catch (e) {
               console.error(`Error processing image ${pair.imageUrl} for PDF:`, e);
@@ -522,7 +564,7 @@ export default {
               doc.setTextColor(0,0,0);
             }
           }
-          contentStartY += imageActualHeight + 10; // Space after image
+          contentStartY += imageActualHeight + 10;
 
           if (pair.tableData && pair.tableData.length > 0) {
             const columns = this.getTableColumns(pair.tableData);
@@ -546,13 +588,12 @@ export default {
               margin: { top: estimatedHeaderHeight, left: margin, right: margin, bottom: margin + estimatedFooterHeight },
               pageBreak: 'auto',
               didDrawPage: (data) => {
-                addPageHeader(doc, data.pageNumber);
+                addPageHeader(doc, data.pageNumber, false); // Pass false for isTitlePage here as well
               }
             });
           }
         }
 
-        // --- Final pass to add footers to all pages ---
         const totalPages = doc.internal.getNumberOfPages();
         for (let k = 1; k <= totalPages; k++) {
           addPageFooter(doc, k, totalPages);
@@ -568,7 +609,6 @@ export default {
         this.isLoading = false;
       }
     },
-
     async getImageDataUrl(url, isLogo = false) {
       try {
         const response = await fetch(url);
