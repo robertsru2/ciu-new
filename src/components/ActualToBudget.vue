@@ -9,8 +9,11 @@
         <div class="date-inputs">
           <label>Start Date: <input type="date" v-model="startDate" min="2023-07-01" class="date-input"></label>
           <label>End Date: <input type="date" v-model="endDate" min="2023-07-01" class="date-input"></label>
-          <input type="checkbox" id="includePriorYears" v-model="includePriorYears">
-          <label for="includePriorYears">Include Prior Years</label>
+          <label>Fiscal Year: 
+            <select v-model="fiscalYear" class="fiscal-year-select">
+              <option v-for="year in availableFiscalYears" :key="year" :value="year">{{ year }}</option>
+            </select>
+          </label>
         </div>
         <label>Department:
           <select v-model="selectedDepartment" @change="clearOtherSelections('department')">
@@ -30,9 +33,6 @@
           </div>
           <div class="progress-bar-container">
             <p :class="{ 'red-text': progress.step === 'API Server Down' || progress.step.startsWith('Failed') }">{{ progress.step }}</p> 
-          </div> 
-          <div v-if="isLoading" class="loading-spinner">
-            <img src="../assets/loading-spinner.gif" alt="Loading..." class="scaled">
           </div>
           <div class = "download-button">
             <button class="b-button" @click.stop="downloadData">Download Data</button>
@@ -45,7 +45,6 @@
     </div> 
 
     <div class="content-area">
-
       <div v-if="imageUrls.length > 0" class="image-container">
         <img :src="imageUrls[0]" :key="'display-' + imageUrls[0]" alt="Report Image 1" class="outlined-image">
         <img :src="imageUrls[0]" :key="imageUrls[0]" :ref="'reportImage0'" alt="Report Image for PDF" style="display: none;">
@@ -79,18 +78,22 @@
            <img :src="imgUrl" :ref="'reportImage' + (index + 1)" alt="Report Image for PDF" style="display: none;">
         </template>
       </div>
-
     </div> 
 
+    <!-- Loading spinner overlay with messages and timer -->
+    <LoadingSpinnerWithMessages :isLoading="isLoading" />
   </div> 
 </template>
 
 <script>
 import axios from 'axios';
-import { jsPDF } from "jspdf";
-import autoTable from 'jspdf-autotable'; // Import the plugin
+import LoadingSpinnerWithMessages from './LoadingSpinnerWithMessages.vue';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 export default {
+  components: {
+    LoadingSpinnerWithMessages
+  },
   data() {
     return {
       pageHeading: 'Actual to Budget Dashboard',
@@ -105,19 +108,27 @@ export default {
       filterLevel: 'DepartmentLevel',
       progress: { current: 0, total: 0, step: 'API Server is Up' },
       imageUrls: [],
-      includePriorYears: true,
+      fiscalYear: this.getCurrentFiscalYear(), // Default to current fiscal year
       isLoading: false,
     };
   },
-    computed: {
+  computed: {
     filteredDivisions() {
       return this.departments.filter(department => department.DepartmentLevel === 'DOM');
     },
- 
+    availableFiscalYears() {
+      // Generate fiscal years from 2024 to current fiscal year + 2
+      const currentFY = this.getCurrentFiscalYear();
+      const years = [];
+      for (let year = 2024; year <= currentFY + 2; year++) {
+        years.push(year);
+      }
+      return years;
+    }
   },
   async created() {
     try {
-      const response = await axios.get('http://localhost:8000/dashboard-ciu'); // Get the departments, divisions, providers, and provider types
+      const response = await axios.get('http://localhost:8000/dashboard-ciu');
       this.departments = response.data.departments;
       this.divisions = response.data.divisions;
       console.log('Server is up');
@@ -127,35 +138,51 @@ export default {
     }
   },
   methods: {
-    clearOtherSelections(selected) {
-      if (selected === 'department') {
-        this.selectedDivision = '';
-        this.filterIDValue = this.selectedDepartment;
-        this.filterLevel = 'DepartmentLevel';          
-      } else if (selected === 'division') {
-        this.selectedDepartment = '';
-        this.filterIDValue = this.selectedDivision;
-        this.filterLevel = 'DivisionNM';
-      } else {
-        console.error('Invalid selection:', selected);
+    getCurrentFiscalYear() {
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      const currentMonth = today.getMonth(); // 0-based (0 = January, 6 = July)
+      
+      // If current month is July (6) or later, we're in the next fiscal year
+      // If current month is before July (0-5), we're still in the current fiscal year
+      if (currentMonth >= 6) { // July or later
+        return currentYear + 1;
+      } else { // January through June
+        return currentYear;
       }
     },
+
+    clearOtherSelections(changedField) {
+      if (changedField !== 'department') {
+        this.selectedDepartment = '';
+      }
+      if (changedField !== 'division') {
+        this.selectedDivision = '';
+      }
+      
+      if (this.selectedDepartment) {
+        this.filterIDValue = this.selectedDepartment;
+        this.filterLevel = 'DepartmentLevel';
+      } else if (this.selectedDivision) {
+        this.filterIDValue = this.selectedDivision;
+        this.filterLevel = 'DivisionNM';
+      }
+    },
+
     async createReport() {
+      this.isLoading = true;
+      this.progress.step = 'Creating report...';
+      
       try {
-        this.isLoading = true;
-        this.imageUrls = []; // Clear previous images
-        this.tableData = null; // Clear previous table data
-        const reportRequest = {
+        const params = {
           startDate: this.startDate,
           endDate: this.endDate,
-          filter_id_value: this.filterIDValue,
           filter_level: this.filterLevel,
-          include_prior_years: this.includePriorYears
+          filter_id_value: this.filterIDValue,
+          fiscal_year: this.fiscalYear // Updated parameter name
         };
-        console.log('FilterID Value', this.filterIDValue)
-        console.log('Filter Level', this.filterLevel)
 
-        const response = await axios.post('http://localhost:8000/actual-to-budget', reportRequest);
+        const response = await axios.post('http://localhost:8000/actual-to-budget', params );
         const timestamp = new Date().getTime();
         console.log('Report Response:', response.data);
         // --- Handle Images ---
@@ -187,400 +214,575 @@ export default {
         }
 
       } catch (error) {
-        console.error('Failed to create report:', error);
-        this.progress.step = `Failed to Create Report: ${error.message}`;
-        this.tableData = null; // Ensure table is cleared on error
-        this.imageUrls = []; // Ensure images are cleared on error
-      } finally { // Use finally to ensure isLoading is always set to false
-        this.isLoading = false;
-      }
-    },
-    async downloadData() {
-    try {
-      console.log('ActualToBudget downloadData method called')
-      const reportRequest = {
-        startDate: this.startDate,
-        endDate: this.endDate,
-        action: 'ActualToBudgetDownload',
-        filter_id_value: this.filterIDValue,
-        filter_level: this.filterLevel
-      };
-      console.log(reportRequest)
-      const response = await axios.post('http://localhost:8000/dashboard-get-file/', reportRequest, {
-        responseType: 'blob', // Important for creating a downloadable file
-      });
-      // Create a blob URL representing the data
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-
-      // Create a link element and programmatically click it to start the download
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'Actual_Budget_data.csv'); // Choose a suitable filename and extension
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (error) {
-      console.error('Failed to download data:', error);
-    }
-  },
-    // --- Helper function to add Header, Sub-Heading, and Footer ---
-    addHeaderFooter(doc, pageNumber, totalPages, logoDataUrl, logoImg, filterLevel, filterIDValue, startDate, endDate) {
-        // Removed unused variable 'pageHeight'
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const margin = 40;
-        let currentHeaderY = margin; // Start Y position for header content
-
-        // --- Combined Page Heading (Logo + Title) ---
-        const logoWidth = 50;
-        const logoHeight = logoImg ? (logoImg.naturalHeight / logoImg.naturalWidth) * logoWidth : 25;
-        const titleText = "Actual to Budget Dashboard";
-        doc.setFontSize(16);
-        doc.setFont(undefined, 'bold');
-        const titleWidth = doc.getTextWidth(titleText);
-        const totalHeaderWidth = logoWidth + 10 + titleWidth;
-        const headerStartX = (pageWidth - totalHeaderWidth) / 2;
-
-        if (logoDataUrl) {
-          doc.addImage(logoDataUrl, 'PNG', headerStartX, currentHeaderY, logoWidth, logoHeight);
-        }
-        doc.text(titleText, headerStartX + logoWidth + 10, currentHeaderY + logoHeight / 2 + 5);
-        currentHeaderY += Math.max(logoHeight, 20) + 15;
-
-        // --- Combined Sub-Heading (Heading1 + Heading2) ---
-        doc.setFontSize(11); // Smaller than header title, but bold
-        doc.setFont(undefined, 'bold');
-        const heading1 = `${filterLevel || 'N/A'} = ${filterIDValue || 'N/A'}`;
-        const heading2 = `Date Range: From ${startDate} To ${endDate}`;
-        const subHeadingText = `${heading1} | ${heading2}`; // Combine with a separator
-        const subHeadingWidth = doc.getTextWidth(subHeadingText);
-        doc.text(subHeadingText, (pageWidth - subHeadingWidth) / 2, currentHeaderY); // Center horizontally
-        currentHeaderY += 25; // Space after sub-heading
-
-        return currentHeaderY; // Return the Y position after the header AND sub-heading content
-    },
-
-    async printToPDF() {
-      // --- Initial Checks & Loading ---
-      console.log('printToPDF method called');
-      if (this.imageUrls.length === 0 && !this.tableData) {
-        this.isLoading = true;
-        console.log('No content to print. Creating report...');
-        await this.createReport();
-        if (this.imageUrls.length === 0 && !this.tableData) {
-          console.error("Still no content to print after report creation.");
-          this.isLoading = false;
-          return;
-        }
-      }
-      this.isLoading = true;
-
-      try {
-        // Create PDF document
-        const doc = new jsPDF('p', 'pt', 'letter');
-        const pageHeight = doc.internal.pageSize.getHeight();
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const margin = 40;
-        const footerHeight = 40;
-        const contentWidth = pageWidth - 2 * margin;
-        //const contentHeight = pageHeight - 2 * margin - footerHeight;
-
-        // --- Load Logo ---
-        const logoImg = this.$refs.logoImage;
-        let logoDataUrl = '';
-        if (logoImg && logoImg.src) {
-          try {
-            const response = await fetch(logoImg.src);
-            const blob = await response.blob();
-            logoDataUrl = await new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result);
-              reader.onerror = reject;
-              reader.readAsDataURL(blob);
-            });
-          } catch (e) { console.error("Error loading logo image:", e); }
-        }
-
-        // --- Preprocess all images ---
-        const processedImages = [];
-        for (let i = 0; i < this.imageUrls.length; i++) {
-          try {
-            // Get image data
-            const imgData = await this.getImageDataUrl(this.imageUrls[i]);
-            if (!imgData) {
-              console.error(`Failed to load image ${i}`);
-              continue;
-            }
-
-            // Get image properties
-            const imgProps = doc.getImageProperties(imgData);
-            const ratio = imgProps.width / imgProps.height;
-
-            processedImages.push({
-              index: i,
-              data: imgData,
-              width: imgProps.width,
-              height: imgProps.height,
-              ratio: ratio
-            });
-          } catch (error) {
-            console.error(`Error processing image ${i}:`, error);
-          }
-        }
-
-        // --- Calculate total pages needed ---
-        // First page: 1 image + table
-        // Subsequent pages: 2 images per page
-        const imagesAfterFirstPage = processedImages.length - 1;
-        const totalPages = 1 + Math.ceil(Math.max(0, imagesAfterFirstPage) / 2);
-        let currentPage = 1;
-
-        // --- FIRST PAGE: Header + First Image + Table ---
-        let currentY = this.addHeaderFooter(doc, currentPage, totalPages, logoDataUrl, logoImg, 
-          this.filterLevel, this.filterIDValue, this.startDate, this.endDate);
-        const headerHeight = currentY - margin;
-        
-        // Calculate available body height on first page
-        const availableBodyHeight = pageHeight - headerHeight - margin - footerHeight;
-        
-        // REQUIREMENT 2.a: First image takes up half of the vertical body space
-        if (processedImages.length > 0) {
-          const firstImage = processedImages[0];
-          // Calculate max dimensions (half of available body height)
-          const maxImageHeight = availableBodyHeight / 2;
-          
-          // Calculate dimensions to fit within allocated space
-          let imgWidth = firstImage.width;
-          let imgHeight = firstImage.height;
-          
-          // Scale based on width first
-          if (imgWidth > contentWidth) {
-            imgWidth = contentWidth;
-            imgHeight = imgWidth / firstImage.ratio;
-          }
-          
-          // Then ensure it doesn't exceed max height
-          if (imgHeight > maxImageHeight) {
-            imgHeight = maxImageHeight;
-            imgWidth = imgHeight * firstImage.ratio;
-          }
-          
-          // Center image horizontally
-          const imgX = margin + (contentWidth - imgWidth) / 2;
-          
-          // Add image to PDF
-          doc.addImage(firstImage.data, 'PNG', imgX, currentY, imgWidth, imgHeight);
-          currentY += imgHeight + 20; // Add space after image
-        }
-        
-        // REQUIREMENT 2.b: Table takes up the second half of the vertical body space
-        if (this.tableData) {
-          const head = [['', ...this.tableData.columns]];
-          const body = this.tableData.rows.map((rowLabel, rowIndex) => {
-            return [rowLabel, ...this.tableData.cell_data[rowIndex]];
-          });
-
-          // Add table after first image
-          autoTable(doc, {
-            head: head,
-            body: body,
-            startY: currentY,
-            theme: 'grid',
-            styles: { fontSize: 8, cellPadding: 4, overflow: 'linebreak' },
-            headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41], fontStyle: 'bold', halign: 'center', lineWidth: 0.5, lineColor: [222, 226, 230] },
-            bodyStyles: { lineWidth: 0.5, lineColor: [222, 226, 230] },
-            columnStyles: {
-              0: { fontStyle: 'bold', halign: 'left', fillColor: [248, 249, 250] },
-              // Right-align all data columns
-              ...Array.from({ length: this.tableData.columns.length }, (_, i) => i + 1).reduce((acc, col) => {
-                acc[col] = { halign: 'right' };
-                return acc;
-              }, {})
-            },
-            didParseCell: (data) => {
-              // Apply font color
-              if (data.section === 'body' && data.column.index > 0) {
-                const rowIndex = data.row.index;
-                const colIndex = data.column.index - 1;
-                if (this.tableData.cell_colors?.[rowIndex]?.[colIndex]) {
-                  const color = this.tableData.cell_colors[rowIndex][colIndex];
-                  data.cell.styles.textColor = (color === 'red') ? [220, 53, 69] : [33, 37, 41];
-                }
-              }
-            },
-            margin: {
-              left: margin,
-              right: margin,
-              top: margin,
-              bottom: margin + footerHeight
-            }
-          });
-        }
-
-        // --- SUBSEQUENT PAGES: Two images per page ---
-        // REQUIREMENT 3: For each successive page, include 2 images
-        for (let i = 1; i < processedImages.length; i += 2) {
-          // Add a new page for each pair of images
-          doc.addPage();
-          currentPage++;
-          
-          // Add header
-          let pageY = this.addHeaderFooter(doc, currentPage, totalPages, logoDataUrl, logoImg, 
-            this.filterLevel, this.filterIDValue, this.startDate, this.endDate);
-          
-          // Calculate available body height
-          const availableBodyHeight = pageHeight - (pageY - margin) - margin - footerHeight;
-          const imageAreaHeight = availableBodyHeight / 2; // Each image gets half the available space
-          
-          // Process first image on this page
-          const img1 = processedImages[i];
-          if (img1) {
-            // Calculate max dimensions
-            const maxImgHeight = imageAreaHeight - 20; // Subtract some padding
-            
-            // Calculate dimensions to fit within allocated space
-            let imgWidth = img1.width;
-            let imgHeight = img1.height;
-            
-            // Scale based on width first
-            if (imgWidth > contentWidth) {
-              imgWidth = contentWidth;
-              imgHeight = imgWidth / img1.ratio;
-            }
-            
-            // Then ensure it doesn't exceed max height
-            if (imgHeight > maxImgHeight) {
-              imgHeight = maxImgHeight;
-              imgWidth = imgHeight * img1.ratio;
-            }
-            
-            // Center image horizontally
-            const imgX = margin + (contentWidth - imgWidth) / 2;
-            
-            // Add image to PDF
-            doc.addImage(img1.data, 'PNG', imgX, pageY, imgWidth, imgHeight);
-            pageY += imgHeight + 20; // Add space after image
-          }
-          
-          // Process second image on this page (if it exists)
-          if (i + 1 < processedImages.length) {
-            const img2 = processedImages[i + 1];
-            
-            // Calculate max dimensions
-            const maxImgHeight = imageAreaHeight - 20; // Subtract some padding
-            
-            // Calculate dimensions to fit within allocated space
-            let imgWidth = img2.width;
-            let imgHeight = img2.height;
-            
-            // Scale based on width first
-            if (imgWidth > contentWidth) {
-              imgWidth = contentWidth;
-              imgHeight = imgWidth / img2.ratio;
-            }
-            
-            // Then ensure it doesn't exceed max height
-            if (imgHeight > maxImgHeight) {
-              imgHeight = maxImgHeight;
-              imgWidth = imgHeight * img2.ratio;
-            }
-            
-            // Center image horizontally
-            const imgX = margin + (contentWidth - imgWidth) / 2;
-            
-            // Add image to PDF
-            doc.addImage(img2.data, 'PNG', imgX, pageY, imgWidth, imgHeight);
-          }
-        }
-
-        // --- Add footers to all pages ---
-        const finalPrintDateTime = new Date().toLocaleString();
-        for (let i = 1; i <= totalPages; i++) {
-          doc.setPage(i);
-          doc.setFontSize(9);
-          doc.setFont(undefined, 'normal');
-          const footerY = pageHeight - margin / 2;
-          const pageNumText = `Page ${i} of ${totalPages}`;
-          doc.text(finalPrintDateTime, margin, footerY, { align: 'left' });
-          doc.text(pageNumText, pageWidth - margin, footerY, { align: 'right' });
-        }
-
-        // --- Save PDF ---
-        doc.save('ActualToBudgetDashboard_Report.pdf');
-        console.log(`PDF generated with ${totalPages} pages`);
-      } catch (error) {
-        console.error('Failed to generate PDF:', error);
-        this.progress.step = 'Failed to Generate PDF';
+        console.error('Error creating report:', error);
+        this.progress.step = 'Failed to create report: ' + error.message;
       } finally {
         this.isLoading = false;
       }
     },
 
-    // Improved helper function to handle both SVG and PNG images
-    async getImageDataUrl(url) {
+    async downloadData() {
+      if (!this.tableData) {
+        alert('No data available to download');
+        return;
+      }
+      
       try {
-        console.log(`Loading image: ${url}`);
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch image: ${response.statusText}`);
-        }
+        const params = {
+          start_date: this.startDate,
+          end_date: this.endDate,
+          filter_level: this.filterLevel,
+          filter_id_value: this.filterIDValue,
+          fiscal_year: this.fiscalYear // Updated parameter name
+        };
+
+        const response = await axios.get('http://localhost:8000/actual-budget/download', { 
+          params,
+          responseType: 'blob'
+        });
         
-        // Check if image is SVG
-        const isSVG = url.toLowerCase().includes('.svg');
-        
-        if (isSVG) {
-          // REQUIREMENT 1: Convert SVG to PNG for PDF
-          console.log(`Converting SVG to PNG: ${url}`);
-          const svgText = await response.text();
-          
-          // Create a blob with the SVG content
-          const svgBlob = new Blob([svgText], {type: 'image/svg+xml'});
-          const svgUrl = URL.createObjectURL(svgBlob);
-          
-          // Return a promise that resolves when the image is loaded and converted
-          return new Promise((resolve, reject) => {
-            const img = new Image();
-            
-            img.onload = () => {
-              // Create a canvas to render the SVG
-              const canvas = document.createElement('canvas');
-              // Set canvas dimensions to the image size or default if not available
-              canvas.width = img.naturalWidth || 800;
-              canvas.height = img.naturalHeight || 600;
-              
-              // Draw the SVG onto the canvas
-              const ctx = canvas.getContext('2d');
-              ctx.drawImage(img, 0, 0);
-              
-              // Convert canvas to PNG data URL
-              const pngDataUrl = canvas.toDataURL('image/png');
-              
-              // Clean up
-              URL.revokeObjectURL(svgUrl);
-              
-              resolve(pngDataUrl);
-            };
-            
-            img.onerror = (error) => {
-              URL.revokeObjectURL(svgUrl);
-              reject(new Error(`Failed to load SVG: ${error}`));
-            };
-            
-            // Set the source to the SVG Blob URL
-            img.src = svgUrl;
-          });
-        } else {
-          // For PNG or other formats, use the existing approach
-          const blob = await response.blob();
-          return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
-        }
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `ActualToBudget_${this.filterIDValue}_FY${this.fiscalYear}.xlsx`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
       } catch (error) {
-        console.error(`Error processing image ${url}:`, error);
-        return null;
+        console.error('Error downloading data:', error);
+        alert('Failed to download data');
+      }
+    },
+
+    async printToPDF() {
+      if (this.imageUrls.length === 0 && !this.tableData) {
+        console.log('No content to print. Creating report...');
+        await this.createReport();
+        if (this.imageUrls.length === 0 && !this.tableData) {
+          console.error("Still no content to print after report creation.");
+          return;
+        }
+      }
+
+      this.isLoading = true;
+      this.progress.step = 'Generating PDF...';
+
+      try {
+        // Create new PDF document
+        const pdfDoc = await PDFDocument.create();
+        const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+        // Page dimensions
+        const pageWidth = 612; // Letter size width in points
+        const pageHeight = 792; // Letter size height in points
+        const margin = 40;
+        const contentWidth = pageWidth - 2 * margin;
+        const headerHeight = 80;
+        const footerHeight = 30;
+        const bodyHeight = pageHeight - headerHeight - footerHeight - 2 * margin;
+
+        // Load and optimize images
+        const processedImages = await this.processImagesForPDF(this.imageUrls);
+        
+        // Create first page
+        let page = pdfDoc.addPage([pageWidth, pageHeight]);
+        let currentY = pageHeight - margin;
+
+        // Add header to first page
+        currentY = await this.addPDFHeader(page, helveticaBoldFont, helveticaFont, currentY, contentWidth, margin);
+
+        // Add first image (half of body height)
+        if (processedImages.length > 0) {
+          const imageHeight = bodyHeight * 0.5;
+          const imageWidth = contentWidth;
+          
+          currentY -= 10; // Small gap after header
+          await this.addImageToPDF(page, processedImages[0], margin, currentY - imageHeight, imageWidth, imageHeight);
+          currentY -= imageHeight + 10;
+        }
+
+        // Add table data to remaining space on first page
+        if (this.tableData) {
+          await this.addTableToPDF(page, helveticaFont, helveticaBoldFont, margin, currentY, contentWidth, bodyHeight * 0.4);
+        }
+
+        // Add footer to first page
+        this.addPDFFooter(page, helveticaFont, margin, pageWidth, 1, Math.ceil((processedImages.length - 1) / 2) + 1);
+
+        // Add remaining images (2 per page)
+        let imageIndex = 1;
+        let pageNumber = 2;
+        
+        while (imageIndex < processedImages.length) {
+          page = pdfDoc.addPage([pageWidth, pageHeight]);
+          currentY = pageHeight - margin;
+
+          // Add header
+          currentY = await this.addPDFHeader(page, helveticaBoldFont, helveticaFont, currentY, contentWidth, margin);
+          currentY -= 10;
+
+          // Add up to 2 images per page
+          const imageHeight = bodyHeight * 0.45; // Slightly smaller to fit 2 images
+          const imageWidth = contentWidth;
+
+          // First image on page
+          if (imageIndex < processedImages.length) {
+            await this.addImageToPDF(page, processedImages[imageIndex], margin, currentY - imageHeight, imageWidth, imageHeight);
+            currentY -= imageHeight + 20;
+            imageIndex++;
+          }
+
+          // Second image on page
+          if (imageIndex < processedImages.length) {
+            await this.addImageToPDF(page, processedImages[imageIndex], margin, currentY - imageHeight, imageWidth, imageHeight);
+            imageIndex++;
+          }
+
+          // Add footer
+          this.addPDFFooter(page, helveticaFont, margin, pageWidth, pageNumber, Math.ceil((processedImages.length - 1) / 2) + 1);
+          pageNumber++;
+        }
+
+        // Save PDF
+        const pdfBytes = await pdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'ActualToBudgetDashboard_Report.pdf';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        console.log(`PDF generated successfully. Size: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
+        this.progress.step = 'PDF generated successfully';
+
+      } catch (error) {
+        console.error('Failed to generate PDF:', error);
+        this.progress.step = `Failed to generate PDF: ${error.message}`;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async processImagesForPDF(imageUrls) {
+      const processedImages = [];
+      
+      for (const url of imageUrls) {
+        try {
+          const response = await fetch(url);
+          if (!response.ok) continue;
+          
+          const blob = await response.blob();
+          const arrayBuffer = await blob.arrayBuffer();
+          
+          // Determine image type and process accordingly
+          const isSvg = blob.type === 'image/svg+xml' || url.endsWith('.svg');
+          
+          if (isSvg) {
+            // Convert SVG to PNG for PDF embedding
+            const pngBuffer = await this.convertSvgToPng(arrayBuffer);
+            processedImages.push({
+              data: pngBuffer,
+              type: 'png'
+            });
+          } else {
+            // Use PNG directly but compress if needed
+            processedImages.push({
+              data: arrayBuffer,
+              type: 'png'
+            });
+          }
+        } catch (error) {
+          console.error(`Error processing image ${url}:`, error);
+        }
+      }
+      
+      return processedImages;
+    },
+
+    async convertSvgToPng(svgBuffer) {
+      return new Promise((resolve, reject) => {
+        const svgString = new TextDecoder().decode(svgBuffer);
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        
+        img.onload = () => {
+          // Set canvas size for good quality but not excessive
+          canvas.width = Math.min(img.width, 1200);
+          canvas.height = Math.min(img.height, 900);
+          
+          // Draw SVG to canvas
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          
+          // Convert to PNG with compression
+          canvas.toBlob((blob) => {
+            if (blob) {
+              blob.arrayBuffer().then(resolve).catch(reject);
+            } else {
+              reject(new Error('Failed to convert SVG to PNG'));
+            }
+          }, 'image/png', 0.8); // 80% quality
+        };
+        
+        img.onerror = reject;
+        
+        // Create blob URL for SVG
+        const svgBlob = new Blob([svgString], { type: 'image/svg+xml' });
+        img.src = URL.createObjectURL(svgBlob);
+      });
+    },
+
+    async addPDFHeader(page, boldFont, normalFont, currentY, contentWidth, margin) {
+      // Page heading - properly centered
+      const headingText = this.pageHeading;
+      const headingWidth = boldFont.widthOfTextAtSize(headingText, 22);
+      const headingX = margin + (contentWidth - headingWidth) / 2; // Center calculation
+      
+      page.drawText(headingText, {
+        x: headingX,
+        y: currentY - 30,
+        size: 22,
+        font: boldFont,
+        color: rgb(0, 0, 0),
+      });
+      
+      // Filter information - properly centered
+      const filterText = `${this.filterLevel} = ${this.filterIDValue} | Date Range: ${this.startDate} To ${this.endDate}`;
+      const filterWidth = normalFont.widthOfTextAtSize(filterText, 14);
+      const filterX = margin + (contentWidth - filterWidth) / 2; // Center calculation
+      
+      page.drawText(filterText, {
+        x: filterX,
+        y: currentY - 60,
+        size: 14,
+        font: normalFont,
+        color: rgb(0, 0, 0),
+      });
+      
+      return currentY - 80; // Return new Y position after header
+    },
+
+    addPDFFooter(page, font, margin, pageWidth, pageNumber, totalPages) {
+      const footerY = 20;
+      
+      // Date/time
+      const dateTime = new Date().toLocaleString();
+      page.drawText(dateTime, {
+        x: margin,
+        y: footerY,
+        size: 9,
+        font: font,
+        color: rgb(0, 0, 0),
+      });
+      
+      // Page number
+      const pageText = `Page ${pageNumber} of ${totalPages}`;
+      page.drawText(pageText, {
+        x: pageWidth - margin - 80,
+        y: footerY,
+        size: 9,
+        font: font,
+        color: rgb(0, 0, 0),
+      });
+    },
+
+    async addImageToPDF(page, imageData, x, y, maxWidth, maxHeight) {
+      try {
+        const image = await page.doc.embedPng(imageData.data);
+        const { width, height } = image;
+        
+        // Calculate scaling to fit within bounds
+        const scaleX = maxWidth / width;
+        const scaleY = maxHeight / height;
+        const scale = Math.min(scaleX, scaleY);
+        
+        const scaledWidth = width * scale;
+        const scaledHeight = height * scale;
+        
+        // Center the image within the available space
+        const centeredX = x + (maxWidth - scaledWidth) / 2;
+        
+        page.drawImage(image, {
+          x: centeredX,
+          y: y,
+          width: scaledWidth,
+          height: scaledHeight,
+        });
+      } catch (error) {
+        console.error('Error adding image to PDF:', error);
+        // Add error text instead
+        page.drawText('Error loading image', {
+          x: x + 20,
+          y: y + maxHeight / 2,
+          size: 12,
+          color: rgb(1, 0, 0),
+        });
+      }
+    },
+
+    async addTableToPDF(page, font, boldFont, x, startY, maxWidth, maxHeight) {
+      if (!this.tableData) return;
+      
+      try {
+        const fontSize = 8;
+        const headerFontSize = 8; // Reduced to fit better
+        const titleFontSize = 10;
+        const rowHeight = 16;
+        const cellPadding = 2;
+        let currentY = startY;
+        
+        // Calculate column widths more carefully to prevent overflow
+        const rowLabelWidth = 160; // Increased for longer labels like "2025 Follow-Up Patients"
+        const totalDataColumns = this.tableData.columns.length;
+        const availableDataWidth = maxWidth - rowLabelWidth;
+        const dataColumnWidth = Math.floor(availableDataWidth / totalDataColumns); // Use floor to ensure no overflow
+        
+        console.log(`Table layout: maxWidth=${maxWidth}, rowLabelWidth=${rowLabelWidth}, dataColumnWidth=${dataColumnWidth}, totalColumns=${totalDataColumns}`);
+        
+        // Calculate actual table width to center it if needed
+        const actualTableWidth = rowLabelWidth + (dataColumnWidth * totalDataColumns);
+        const tableStartX = x + (maxWidth - actualTableWidth) / 2;
+        
+        // Draw table title as part of the table structure (like HTML <caption>)
+        const titleText = 'Actual to Budget Data by Month';
+        const titleWidth = boldFont.widthOfTextAtSize(titleText, titleFontSize);
+        const titleX = tableStartX + (actualTableWidth - titleWidth) / 2;
+        
+        // Title background (part of table)
+        page.drawRectangle({
+          x: tableStartX,
+          y: currentY - 18,
+          width: actualTableWidth,
+          height: 18,
+          color: rgb(0.92, 0.92, 0.92), // Slightly darker gray for title
+          borderColor: rgb(0.8, 0.8, 0.8),
+          borderWidth: 0.5,
+        });
+        
+        page.drawText(titleText, {
+          x: titleX,
+          y: currentY - 14,
+          size: titleFontSize,
+          font: boldFont,
+          color: rgb(0, 0, 0),
+        });
+        currentY -= 18;
+        
+        // Draw header row background (light gray like HTML)
+        const headerRowY = currentY;
+        page.drawRectangle({
+          x: tableStartX,
+          y: headerRowY - rowHeight,
+          width: actualTableWidth,
+          height: rowHeight,
+          color: rgb(0.95, 0.95, 0.95), // Light gray background
+          borderColor: rgb(0.8, 0.8, 0.8),
+          borderWidth: 0.5,
+        });
+        
+        // Draw empty header cell for row labels column
+        page.drawRectangle({
+          x: tableStartX,
+          y: headerRowY - rowHeight,
+          width: rowLabelWidth,
+          height: rowHeight,
+          borderColor: rgb(0.8, 0.8, 0.8),
+          borderWidth: 0.5,
+        });
+        
+        // Draw column headers with careful width management
+        for (let i = 0; i < this.tableData.columns.length; i++) {
+          const colX = tableStartX + rowLabelWidth + (i * dataColumnWidth);
+          const headerText = this.tableData.columns[i];
+          
+          // Draw cell border
+          page.drawRectangle({
+            x: colX,
+            y: headerRowY - rowHeight,
+            width: dataColumnWidth,
+            height: rowHeight,
+            borderColor: rgb(0.8, 0.8, 0.8),
+            borderWidth: 0.5,
+          });
+          
+          // Truncate text if too long and center it
+          const maxTextWidth = dataColumnWidth - (2 * cellPadding);
+          let displayText = headerText;
+          let textWidth = boldFont.widthOfTextAtSize(displayText, headerFontSize);
+          
+          // Truncate if necessary
+          while (textWidth > maxTextWidth && displayText.length > 3) {
+            displayText = displayText.substring(0, displayText.length - 1);
+            textWidth = boldFont.widthOfTextAtSize(displayText + '...', headerFontSize);
+          }
+          if (displayText !== headerText) {
+            displayText += '...';
+          }
+          
+          // Center the text
+          const textX = colX + (dataColumnWidth - textWidth) / 2;
+          
+          page.drawText(displayText, {
+            x: Math.max(colX + cellPadding, textX),
+            y: headerRowY - rowHeight + 6,
+            size: headerFontSize,
+            font: boldFont,
+            color: rgb(0, 0, 0),
+          });
+        }
+        
+        currentY -= rowHeight;
+        
+        // Draw data rows (excluding any empty rows)
+        const validRows = this.tableData.rows.filter((row, index) => {
+          return row && this.tableData.cell_data[index] && 
+                 this.tableData.cell_data[index].some(cell => cell !== null && cell !== undefined && cell !== '');
+        });
+        
+        console.log(`Drawing ${validRows.length} valid rows out of ${this.tableData.rows.length} total rows`);
+        
+        for (let rowIndex = 0; rowIndex < validRows.length; rowIndex++) {
+          const originalRowIndex = this.tableData.rows.indexOf(validRows[rowIndex]);
+          
+          // Alternate row background
+          if (rowIndex % 2 === 1) {
+            page.drawRectangle({
+              x: tableStartX,
+              y: currentY - rowHeight,
+              width: actualTableWidth,
+              height: rowHeight,
+              color: rgb(0.98, 0.98, 0.98),
+            });
+          }
+          
+          // Draw row border
+          page.drawRectangle({
+            x: tableStartX,
+            y: currentY - rowHeight,
+            width: actualTableWidth,
+            height: rowHeight,
+            borderColor: rgb(0.8, 0.8, 0.8),
+            borderWidth: 0.5,
+          });
+          
+          // Row label cell with border
+          page.drawRectangle({
+            x: tableStartX,
+            y: currentY - rowHeight,
+            width: rowLabelWidth,
+            height: rowHeight,
+            borderColor: rgb(0.8, 0.8, 0.8),
+            borderWidth: 0.5,
+          });
+          
+          // Row label text - truncate if too long
+          const rowLabel = validRows[rowIndex];
+          const maxLabelWidth = rowLabelWidth - (2 * cellPadding);
+          let displayLabel = rowLabel;
+          let labelWidth = boldFont.widthOfTextAtSize(displayLabel, fontSize);
+          
+          while (labelWidth > maxLabelWidth && displayLabel.length > 3) {
+            displayLabel = displayLabel.substring(0, displayLabel.length - 1);
+            labelWidth = boldFont.widthOfTextAtSize(displayLabel + '...', fontSize);
+          }
+          if (displayLabel !== rowLabel) {
+            displayLabel += '...';
+          }
+          
+          page.drawText(displayLabel, {
+            x: tableStartX + cellPadding,
+            y: currentY - rowHeight + 6,
+            size: fontSize,
+            font: boldFont,
+            color: rgb(0, 0, 0),
+          });
+          
+          // Data cells
+          for (let colIndex = 0; colIndex < this.tableData.columns.length; colIndex++) {
+            const colX = tableStartX + rowLabelWidth + (colIndex * dataColumnWidth);
+            
+            // Draw cell border
+            page.drawRectangle({
+              x: colX,
+              y: currentY - rowHeight,
+              width: dataColumnWidth,
+              height: rowHeight,
+              borderColor: rgb(0.8, 0.8, 0.8),
+              borderWidth: 0.5,
+            });
+            
+            // Get cell value
+            const cellValue = this.tableData.cell_data[originalRowIndex] ? 
+                             this.tableData.cell_data[originalRowIndex][colIndex] : '';
+            
+            if (cellValue !== null && cellValue !== undefined && cellValue !== '') {
+              const cellText = cellValue.toString();
+              
+              // Check if text fits in column
+              const maxCellWidth = dataColumnWidth - (2 * cellPadding);
+              let displayCellText = cellText;
+              let cellTextWidth = font.widthOfTextAtSize(displayCellText, fontSize);
+              
+              // Truncate if necessary
+              while (cellTextWidth > maxCellWidth && displayCellText.length > 1) {
+                displayCellText = displayCellText.substring(0, displayCellText.length - 1);
+                cellTextWidth = font.widthOfTextAtSize(displayCellText, fontSize);
+              }
+              
+              // Right align numbers, left align text
+              const isNumber = !isNaN(parseFloat(cellText)) && isFinite(cellText);
+              let textX;
+              
+              if (isNumber) {
+                textX = colX + dataColumnWidth - cellTextWidth - cellPadding; // Right align
+              } else {
+                textX = colX + cellPadding; // Left align
+              }
+              
+              // Apply color styling
+              let textColor = rgb(0, 0, 0);
+              if (this.tableData.cell_colors && 
+                  this.tableData.cell_colors[originalRowIndex] && 
+                  this.tableData.cell_colors[originalRowIndex][colIndex]) {
+                const colorStr = this.tableData.cell_colors[originalRowIndex][colIndex];
+                if (colorStr.includes('red') || colorStr.includes('#') || parseFloat(cellText) < 0) {
+                  textColor = rgb(0.8, 0, 0);
+                }
+              }
+              
+              page.drawText(displayCellText, {
+                x: textX,
+                y: currentY - rowHeight + 6,
+                size: fontSize,
+                font: font,
+                color: textColor,
+              });
+            }
+          }
+          
+          currentY -= rowHeight;
+          
+          // Stop if running out of space
+          if (currentY < startY - maxHeight + rowHeight) {
+            console.log('Reached maximum table height, stopping at row', rowIndex + 1);
+            break;
+          }
+        }
+        
+      } catch (error) {
+        console.error('Error adding table to PDF:', error);
+        page.drawText('Error rendering table. Please check console for details.', {
+          x: x + 20,
+          y: startY - 20,
+          size: 10,
+          color: rgb(1, 0, 0),
+        });
       }
     }
   }
@@ -847,5 +1049,14 @@ export default {
 
 .red-text {
   color: #dc3545; /* Standard Bootstrap danger color */
+}
+
+/* Add styling for the fiscal year select */
+.fiscal-year-select {
+  padding: 5px;
+  margin-left: 5px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
 }
 </style>

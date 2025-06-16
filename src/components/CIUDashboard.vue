@@ -46,11 +46,7 @@
             <progress :value="progress.current" :max="progress.total"></progress>
             <p>{{ progress.current }} / {{ progress.total }}</p>
           </div>
-          <div v-if="isLoading" class="loading-spinner">
-            <img src="../assets/loading-spinner.gif" alt="Loading..." class="scaled">
-          </div>
-          <div class = "download-button">
-            <!-- Add a button that triggers the download when clicked -->
+          <div class="download-button">
             <button class="b-button" @click="downloadData">Download Data</button>      
           </div>
         </div>
@@ -63,13 +59,19 @@
     <div class="image-container">
       <img :src="imageName" alt="Report Image" class="outlined-image">
     </div>
+    <!-- Loading spinner overlay with messages and timer -->
+    <LoadingSpinnerWithMessages :isLoading="isLoading" />
   </div>
 </template>
 
 <script>
 import axios from 'axios';
+import LoadingSpinnerWithMessages from './LoadingSpinnerWithMessages.vue';
 
 export default {
+  components: {
+    LoadingSpinnerWithMessages
+  },
   data() {
     return {
       pageHeading: 'CIU Dashboard',
@@ -91,8 +93,8 @@ export default {
       isLoading: false,
     }
   },
-   computed: {
-      uniqueCategories() {
+  computed: {
+    uniqueCategories() {
       const categories = {};
       this.providertypes.forEach(pt => {
         if (!categories[pt.ProviderCategory]) {
@@ -102,134 +104,134 @@ export default {
       });
       return categories;
     }
-},  
+  },  
   async created() {
     try {
-      const response = await axios.get('http://localhost:8000/dashboard-ciu'); // replace with your server's URL
-        this.departments = response.data.departments;
-        this.divisions = response.data.divisions;
-        this.providers = response.data.providers;
-        this.providertypes = response.data.providertypes;
-        console.log('Server is up');
-      } catch (error) {
-        console.log('Server is down');
-        this.progress.step = 'API Server Down';
+      const response = await axios.get('http://localhost:8000/dashboard-ciu');
+      this.departments = response.data.departments;
+      this.divisions = response.data.divisions;
+      this.providers = response.data.providers;
+      this.providertypes = response.data.providertypes;
+      console.log('Server is up');
+    } catch (error) {
+      console.log('Server is down');
+      this.progress.step = 'API Server Down';
+    }
+  },
+  methods: {
+    clearOtherSelections(selected) {
+      if (selected === 'department') {
+        this.selectedDivision = '';
+        this.selectedProvider = '';
+        this.selectedProviderType = 'ALL';
+        this.filterIDValue = this.selectedDepartment + (this.selectedProviderType !== 'ALL' ? '|' + this.selectedProviderType : '');
+        this.filterLevel = 'DepartmentLevel' + (this.selectedProviderType !== 'ALL' ? '|' + 'ProviderCategory' : '');          
+      } else if (selected === 'division') {
+        this.selectedDepartment = '';
+        this.selectedProvider = '';
+        this.selectedProviderType = 'ALL';
+        this.filterIDValue = this.selectedDivision  + (this.selectedProviderType !== 'ALL' ? '|' + this.selectedProviderType : '')
+        this.filterLevel = 'DivisionNM' + (this.selectedProviderType !== 'ALL' ? '|' + 'ProviderCategory' : '')
+      } else if (selected === 'provider') {
+        this.selectedProviderType = '';
+        this.selectedDepartment = ''; 
+        this.selectedDivision = '';
+        this.filterIDValue = this.selectedProvider;
+        this.filterLevel = 'BillingProviderID'; 
+      } else if (selected === 'providerType') {
+          this.selectedProvider = '';
+          if (this.selectedDepartment !== '') {
+            this.filterIDValue =  this.selectedDepartment + '|' + this.selectedProviderType ;
+            this.filterLevel = 'DepartmentLevel' + '|' + 'ProviderCategory'; 
+          }
+          else if (this.selectedDivision !== '') {
+            this.filterIDValue =  this.selectedDivision + '|' + this.selectedProviderType ;
+            this.filterLevel = 'DivisionNM' + '|' + 'ProviderCategory'; 
+          }
+          else {
+            this.filterIDValue =  'ALL' + '|' + this.selectedProviderType ;
+            this.filterLevel = 'DepartmentLevel' + '|' + 'ProviderCategory'; 
+          }
       }
     },
-    methods: {
-      clearOtherSelections(selected) {
-        if (selected === 'department') {
-          this.selectedDivision = '';
-          this.selectedProvider = '';
-          this.selectedProviderType = 'ALL';
-          this.filterIDValue = this.selectedDepartment + (this.selectedProviderType !== 'ALL' ? '|' + this.selectedProviderType : '');
-          this.filterLevel = 'DepartmentLevel' + (this.selectedProviderType !== 'ALL' ? '|' + 'ProviderCategory' : '');          
-        } else if (selected === 'division') {
-          this.selectedDepartment = '';
-          this.selectedProvider = '';
-          this.selectedProviderType = 'ALL';
-          this.filterIDValue = this.selectedDivision  + (this.selectedProviderType !== 'ALL' ? '|' + this.selectedProviderType : '')
-          this.filterLevel = 'DivisionNM' + (this.selectedProviderType !== 'ALL' ? '|' + 'ProviderCategory' : '')
-        } else if (selected === 'provider') {
-          this.selectedProviderType = '';
-          this.selectedDepartment = ''; 
-          this.selectedDivision = '';
-          this.filterIDValue = this.selectedProvider;
-          this.filterLevel = 'BillingProviderID'; 
-        } else if (selected === 'providerType') {
-            this.selectedProvider = '';
-            if (this.selectedDepartment !== '') {
-              this.filterIDValue =  this.selectedDepartment + '|' + this.selectedProviderType ;
-              this.filterLevel = 'DepartmentLevel' + '|' + 'ProviderCategory'; 
-            }
-            else if (this.selectedDivision !== '') {
-              this.filterIDValue =  this.selectedDivision + '|' + this.selectedProviderType ;
-              this.filterLevel = 'DivisionNM' + '|' + 'ProviderCategory'; 
-            }
-            else {
-              this.filterIDValue =  'ALL' + '|' + this.selectedProviderType ;
-              this.filterLevel = 'DepartmentLevel' + '|' + 'ProviderCategory'; 
-            }
-        }
-      },
-      validateDates() {
-        if (this.startDate && this.endDate && this.startDate > this.endDate) {
-          this.errorMessage = 'End date must be later than start date.';
+    validateDates() {
+      if (this.startDate && this.endDate && this.startDate > this.endDate) {
+        this.errorMessage = 'End date must be later than start date.';
+      } else {
+        this.errorMessage = '';
+        this.createReport();
+      }
+    },
+    createReport() {
+      if (this.socket) {
+        this.socket.close();
+      }
+
+      this.socket = new WebSocket('ws://localhost:8000/dashboard-run-report');
+      this.isLoading = true;
+      this.socket.onopen = () => {
+        const reportRequest = {
+          startDate: this.startDate,
+          endDate: this.endDate,
+          action: 'createReportCIUDashboard',
+          filter_id_value: this.filterIDValue,
+          filter_level: this.filterLevel,
+          include_prior_years: this.includePriorYears
+        };
+        this.socket.send(JSON.stringify(reportRequest));
+      };
+
+      this.socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        console.log(data)
+        // Check if the received data contains an 'img_name' property
+        if (data.img_name) {
+          const timestamp = new Date().getTime(); // Get the current timestamp
+          this.imageName = `http://localhost:8000/dashboard-get-image/${data.img_name}?t=${timestamp}`;
         } else {
-          this.errorMessage = '';
-          this.createReport();
+          this.progress = data;
         }
-      },
-      createReport() {
-        if (this.socket) {
-          this.socket.close();
-        }
+      };
 
-        this.socket = new WebSocket('ws://localhost:8000/dashboard-run-report');
-        this.isLoading = true;
-        this.socket.onopen = () => {
-          const reportRequest = {
-            startDate: this.startDate,
-            endDate: this.endDate,
-            action: 'createReportCIUDashboard',
-            filter_id_value: this.filterIDValue,
-            filter_level: this.filterLevel,
-            include_prior_years: this.includePriorYears
-          };
-          this.socket.send(JSON.stringify(reportRequest));
+      this.socket.onerror = (event) => {
+        console.error('WebSocket error:', event);
+      };
+
+      this.socket.onclose = () => {
+        console.log('WebSocket connection closed');
+      };
+      this.isLoading = false;
+    },
+    async downloadData() {
+      try {
+        console.log('downloadData method called')
+        const reportRequest = {
+          startDate: this.startDate,
+          endDate: this.endDate,
+          action: 'CIUDashboardDownloadData',
+          filter_id_value: this.filterIDValue,
+          filter_level: this.filterLevel
         };
+        console.log(reportRequest)
+        const response = await axios.post('http://localhost:8000/dashboard-get-file/', reportRequest, {
+          responseType: 'blob', // Important for creating a downloadable file
+        });
+        // Create a blob URL representing the data
+        const url = window.URL.createObjectURL(new Blob([response.data]));
 
-        this.socket.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          console.log(data)
-          // Check if the received data contains an 'img_name' property
-          if (data.img_name) {
-            const timestamp = new Date().getTime(); // Get the current timestamp
-            this.imageName = `http://localhost:8000/dashboard-get-image/${data.img_name}?t=${timestamp}`;
-          } else {
-            this.progress = data;
-          }
-        };
-
-        this.socket.onerror = (event) => {
-          console.error('WebSocket error:', event);
-        };
-
-        this.socket.onclose = () => {
-          console.log('WebSocket connection closed');
-        };
-        this.isLoading = false;
-      },
-      async downloadData() {
-        try {
-          console.log('downloadData method called')
-          const reportRequest = {
-            startDate: this.startDate,
-            endDate: this.endDate,
-            action: 'CIUDashboardDownloadData',
-            filter_id_value: this.filterIDValue,
-            filter_level: this.filterLevel
-          };
-          console.log(reportRequest)
-          const response = await axios.post('http://localhost:8000/dashboard-get-file/', reportRequest, {
-            responseType: 'blob', // Important for creating a downloadable file
-          });
-          // Create a blob URL representing the data
-          const url = window.URL.createObjectURL(new Blob([response.data]));
-
-          // Create a link element and programmatically click it to start the download
-          const link = document.createElement('a');
-          link.href = url;
-          link.setAttribute('download', 'data.csv'); // Choose a suitable filename and extension
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        } catch (error) {
-          console.error('Failed to download data:', error);
-        }
-      },
+        // Create a link element and programmatically click it to start the download
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'data.csv'); // Choose a suitable filename and extension
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (error) {
+        console.error('Failed to download data:', error);
+      }
     },
   }
+}
 </script>
 
   <!-- ... -->
