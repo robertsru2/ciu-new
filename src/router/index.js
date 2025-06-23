@@ -19,6 +19,7 @@ import UserLogin from '@/components/UserLogin.vue' // Import the new component
 import ProviderPageNew from '@/components/ProviderPageNew.vue'
 import PayPeriodUploader from '@/components/PayPeriodUploader.vue'
 import ClinicQuadrants from '@/components/ClinicQuadrants.vue'
+import LagTime from '@/components/LagTime.vue'
 
 
 const routes = [
@@ -41,6 +42,7 @@ const routes = [
   { path: '/oos-compensation', name: 'OOSCompensation', component: OOSCompesation },
   { path: '/login', name: 'Login', component: UserLogin }, // Add the new route
   { path: '/clinic-quadrants', name: 'ClinicQuadrants', component: ClinicQuadrants }, // Add the new route
+  { path: '/lagtime', name: 'LagTime', component: LagTime }, // Add the new route
 
   { path: '/', redirect: '/home' }  
   // other routes... 

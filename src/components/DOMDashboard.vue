@@ -18,14 +18,13 @@
         <div> <router-link :to="{ name: 'DOWVisitsDashboard' }">Day of Week Dashboard</router-link></div>
         <div> <router-link :to="{ name: 'OOSCompensation' }">Out of State Compensation Data</router-link></div>
         <div> <router-link :to="{ name: 'ClinicQuadrants' }">Clinic/Provider Quadrants Dashboard</router-link></div>
+        <div> <router-link :to="{ name: 'LagTime' }">Lag Time Report</router-link></div>
       </div>
     </div>
   </div> 
 </template>
 
 <script>
-
-
 export default {
   data() {
       return {
@@ -33,9 +32,9 @@ export default {
       }
   }
 }
- </script>
+</script>
     
- <style scoped>
+<style scoped>
   .container {
     display: flex;
     flex-direction: column;
