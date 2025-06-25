@@ -65,9 +65,7 @@
               <td>{{ row.VisitType }}</td>
               <td>{{ formatDateTime(row['1st Date Available']) }}</td>
               <td>{{ row['1st Block Type'] }}</td>
-              <td>{{ row['2nd Date Available'] }}</td>
-              <td>{{ formatDateTime(row['2nd Block Type']) }}</td>
-              <td>{{ row['3rd Date Available'] }}</td>
+              <td>{{ formatDateTime(row['2nd Date Available']) }}</td>
               <td>{{ row['2nd Block Type'] }}</td>
               <td>{{ formatDateTime(row['3rd Date Available']) }}</td>
               <td>{{ row['3rd Block Type'] }}</td>
