@@ -181,70 +181,134 @@ export default {
             filter_level: this.filterLevel,
             include_prior_years: this.includePriorYears
           };
-          const response = await axios.post('http://localhost:8000/get_block_data/', reportRequest);
+          const response = await axios.post('http://localhost:8000/get-block-data/', reportRequest);
           console.log('Block Response Data:', response.data);
 
-        // Check if response.data is null or does not contain the html property
-        if (!response.data) {
-          throw new Error('Invalid response structure returned from the server');
-        }
-
-        // Insert the HTML content into the DOM
-        this.htmlResponse = response.data; // response.data contains the HTML content
-        console.log('HTML Response:', this.htmlResponse);
-
-        this.$nextTick(() => {
-          // Inject the CSS
-          const cssLink = document.createElement('link');
-          cssLink.rel = 'stylesheet';
-          cssLink.href = 'https://www.unpkg.com/dt_for_itables@2.0.11/dt_bundle.css';
-          document.head.appendChild(cssLink);
-
-          // Extract the dynamic ID from the HTML response
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(this.htmlResponse, 'text/html');
-          const tableElement = doc.querySelector('table');
-          const dynamicId = tableElement ? tableElement.id : null;
-
-          if (!dynamicId) {
-            console.log('Failed to extract dynamic ID from the HTML response');
-            throw new Error('Failed to extract dynamic ID from the HTML response');
+          if (!response.data) {
+            throw new Error('Invalid response structure returned from the server');
           }
 
-          // Extract the data from the response
-          const tableData = JSON.parse(tableElement.getAttribute('data-table-data'));
+          this.htmlResponse = response.data;
+          console.log('HTML Response:', this.htmlResponse);
 
-          // Convert the data to a format that can be used in the script
-          const data = tableData.map((item, index) => [
-            index,
-            item.ProviderID,
-            item.ProviderName,
-            item.UnavailableReasonDescription,
-            item.BlockDate,
-            item.BlockedHours,
-            item.PayrollBlockedHours
-          ]);
-
-          // Inject the JavaScript module
-          const script = document.createElement('script');
-          script.type = 'module';
-          script.textContent = `
-            import {DataTable, jQuery as $} from 'https://www.unpkg.com/dt_for_itables@2.0.11/dt_bundle.js';
-            document.querySelectorAll("#${dynamicId}:not(.dataTable)").forEach(table => {
-              const data = ${JSON.stringify(data)};
-              let dt_args = {"layout": {"topStart": "pageLength", "topEnd": "search", "bottomStart": "info", "bottomEnd": "paging"}, "order": []};
-              dt_args["data"] = data;
-              new DataTable(table, dt_args);
-            });
-          `;
-          document.body.appendChild(script);
-        });
-        this.progress.step = 'Report Created Successfully';
+          this.$nextTick(() => {
+            // Clean up any existing DataTable resources
+            this.cleanupDataTable();
+            
+            // Load standard DataTables
+            this.loadStandardDataTables();
+          });
+          
+          this.progress.step = 'Report Created Successfully';
         } catch (error) {
-            console.error('Failed to create report:', error);
-            this.progress.step = 'Failed to Create Report';
+          console.error('Failed to create report:', error);
+          this.progress.step = 'Failed to Create Report';
         }
-        },
+      },
+      cleanupDataTable() {
+        // Remove existing DataTable CSS
+        const existingCSS = document.querySelectorAll('link[href*="datatables"], link[href*="dt_bundle"]');
+        existingCSS.forEach(link => link.remove());
+        
+        // Remove existing DataTable scripts
+        const existingScripts = document.querySelectorAll('script[src*="datatables"], script[src*="dt_bundle"], script[src*="jquery"]');
+        existingScripts.forEach(script => script.remove());
+        
+        // Destroy existing DataTable instances
+        if (window.$ && window.$.fn.DataTable) {
+          window.$('table.dataTable').DataTable().destroy();
+        }
+      },
+      loadStandardDataTables() {
+        // Load CSS first
+        const cssLink = document.createElement('link');
+        cssLink.rel = 'stylesheet';
+        cssLink.href = 'https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css';
+        document.head.appendChild(cssLink);
+
+        // Load jQuery if not already loaded
+        if (!window.jQuery) {
+          const jqueryScript = document.createElement('script');
+          jqueryScript.src = 'https://code.jquery.com/jquery-3.6.0.min.js';
+          jqueryScript.onload = () => {
+            this.loadDataTablesScript();
+          };
+          document.head.appendChild(jqueryScript);
+        } else {
+          this.loadDataTablesScript();
+        }
+      },
+      loadDataTablesScript() {
+        const dtScript = document.createElement('script');
+        dtScript.src = 'https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js';
+        dtScript.onload = () => {
+          // Wait a bit for the DOM to be ready
+          setTimeout(() => {
+            this.initializeStandardDataTable();
+          }, 100);
+        };
+        document.head.appendChild(dtScript);
+      },
+      initializeStandardDataTable() {
+        // Extract the dynamic ID from the HTML response
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(this.htmlResponse, 'text/html');
+        const tableElement = doc.querySelector('table');
+        const dynamicId = tableElement ? tableElement.id : null;
+
+        if (!dynamicId) {
+          console.log('Failed to extract dynamic ID from the HTML response');
+          throw new Error('Failed to extract dynamic ID from the HTML response');
+        }
+
+        // Extract the data from the response
+        const tableData = JSON.parse(tableElement.getAttribute('data-table-data'));
+
+        // Convert the data to a format that can be used in the script
+        const data = tableData.map((item, index) => [
+          index,
+          item.ProviderID,
+          item.ProviderName,
+          item.UnavailableReasonDescription,
+          item.BlockDate,
+          item.BlockedHours,
+          item.PayrollBlockedHours
+        ]);
+
+        // Initialize DataTable with jQuery
+        const initScript = document.createElement('script');
+        initScript.textContent = `
+          $(document).ready(function() {
+            // Destroy any existing DataTable on this element
+            if ($.fn.DataTable.isDataTable('#${dynamicId}')) {
+              $('#${dynamicId}').DataTable().destroy();
+            }
+            
+            // Initialize new DataTable
+            $('#${dynamicId}').DataTable({
+              "data": ${JSON.stringify(data)},
+              "pageLength": 10,
+              "lengthMenu": [10, 25, 50, 100],
+              "pagingType": "full_numbers",
+              "order": [],
+              "language": {
+                "paginate": {
+                  "first": "First",
+                  "last": "Last",
+                  "next": "Next",
+                  "previous": "Previous"
+                }
+              },
+              "dom": '<"top"lf>rt<"bottom"ip><"clear">',
+              "columnDefs": [
+                { "orderable": true, "targets": "_all" }
+              ],
+              "responsive": true
+            });
+          });
+        `;
+        document.body.appendChild(initScript);
+      },
       async downloadData() {
         try {
           console.log('downloadData method called')
@@ -277,18 +341,18 @@ export default {
   }
 </script>
 
-  <!-- ... -->
 <style scoped>
 .logo {
-  width: 150px; /* Adjust as needed */
-  height: auto; /* This will maintain the aspect ratio */
-  margin-right: 1rem; /* Add some space between the logo and the multiselect-container */
+  width: 150px;
+  height: auto;
+  margin-right: 1rem;
 }
 
 .header {
   display: flex;
-  align-items: center; /* This will vertically align the image and the heading */
+  align-items: center;
 }
+
 .container {
   display: flex;
   flex-direction: column;
@@ -308,13 +372,15 @@ export default {
   transition: box-shadow 0.3s ease-in-out;
   margin-right: 200px;
 }
+
 .form-check-label {
   transition: background-color 0.3s ease-in-out;
 }
 
 .form-check-label:hover {
-  background-color: #f8f9fa; /* Change this color to your preference */
+  background-color: #f8f9fa;
 }
+
 .b-button {
   background-color: #007bff;
   color: #fff;
@@ -337,35 +403,38 @@ export default {
 .date-input {
   margin-right: 1rem;
 }
+
 .report-container {
   display: flex;
   align-items: center;
 }
 
 .progress-container {
-  margin-left: 200px; /* Adjust this value as needed */
+  margin-left: 200px;
 }
 
 .button-container {
   display: flex;
-  justify-content: space-between; /* Or use 'space-around' */
+  justify-content: space-between;
 }
 
 .image-container {
   width: 100%;
   overflow: auto;
 }
+
 .button-progress-container {
   display: flex;
   flex-direction: row;
-  align-items: center; /* This will left-align the children */
+  align-items: center;
 }
 
 .button-container {
-  margin-bottom: 1rem; /* Add some space between the button and the progress bar */
-  padding-left: 3rem; /* Add padding to the left side of the button */
-  margin-right: 5rem; /* Add some space between the button and the progress bar */  
+  margin-bottom: 1rem;
+  padding-left: 3rem;
+  margin-right: 5rem;
 }
+
 .container {
   display: flex;
   flex-direction: column;
@@ -374,45 +443,56 @@ export default {
 
 .header {
   display: flex;
-  align-items: center; /* This will vertically align the image and the multiselect-container */
+  align-items: center;
 }
+
 .outlined-image {
-  border: 2px solid #000; /* Change the color and width as needed */
-  margin-bottom: 1rem; /* Add some space below the heading */
-  width: 90%; /* Set the width of the image to 100% */
-  height: auto; /* This will maintain the aspect ratio of the image */
-  padding: 1rem; /* Add padding around the image */
-  box-sizing: border-box; /* Include the border in the total width and height of the image */
-  border-radius: 0.25rem; /* Add rounded corners to the image */
-  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15); /* Add a box shadow to the image */
-  transition: box-shadow 0.3s ease-in-out; /* Add a smooth transition effect to the box shadow */
+  border: 2px solid #000;
+  margin-bottom: 1rem;
+  width: 90%;
+  height: auto;
+  padding: 1rem;
+  box-sizing: border-box;
+  border-radius: 0.25rem;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  transition: box-shadow 0.3s ease-in-out;
 }
+
 .page-heading {
   text-align: center;
-  margin-bottom: 1rem; /* Add some space below the heading */
+  margin-bottom: 1rem;
 }
+
 .checkbox-container {
   display: flex;
   align-items: center;
 }
+
 .red-text {
   color: red;
 }
-</style>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <!-- Other head elements -->
-  <link href="https://www.unpkg.com/dt_for_itables@2.0.11/dt_bundle.css" rel="stylesheet">
-</head>
-<body>
-  <div id="app"></div>
-  <!-- Other scripts -->
-  <script type="module">
-    import {DataTable, jQuery as $} from 'https://www.unpkg.com/dt_for_itables@2.0.11/dt_bundle.js';
-    window.DataTable = DataTable;
-    window.$ = $;
-  </script>
-</body>
-</html>
+/* Minimal DataTable container styling - let DataTables handle the rest */
+:deep(.dataTables_wrapper) {
+  margin-top: 1rem;
+}
+
+/* Ensure proper spacing for DataTable elements */
+:deep(.dataTables_length) {
+  float: left;
+}
+
+:deep(.dataTables_filter) {
+  float: right;
+}
+
+:deep(.dataTables_info) {
+  float: left;
+  padding-top: 8px;
+}
+
+:deep(.dataTables_paginate) {
+  float: right;
+  padding-top: 8px;
+}
+</style>
